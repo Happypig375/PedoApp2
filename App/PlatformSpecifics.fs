@@ -3,7 +3,7 @@
 // Implementation is at each platform project's PlatformSpecifics folder
 type IPlatformServices =
     /// In Xamarin.Forms units - same as native units, whether it be pixels or density independent units
-    abstract ScreenDimensions : struct(float * float)
+    abstract ScreenDimensions : (float * float)
     abstract HeightDecrease : float
     abstract Quit : unit -> unit
 module PlatformServices =
@@ -11,7 +11,7 @@ module PlatformServices =
 
 module Effects =
     // ** Effects cannot be reused, make them functions instead of values! **
-    let [<Literal>] _GroupName = "PanaIoTApp"
+    let [<Literal>] _GroupName = "App"
     type BaseBasicEffect(id) = inherit Xamarin.Forms.RoutingEffect(_GroupName + "." + id)
     let baseBasic ctor = Fabulous.ViewElement.Create(ctor, (fun _ _ _ -> ()), (fun _ _ _ _ -> ()), Fabulous.AttributesBuilder 0)
 

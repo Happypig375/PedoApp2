@@ -30,12 +30,12 @@ namespace App.PlatformSpecifics
             //Windows.UI.Xaml.Application.Current.Resources.Source = new Uri("ms-resource:///Files/_PlatformSpecifics/Styles.UWP.xaml");
         }
         public double HeightDecrease => 0;
-        public (double, double) ScreenDimensions
+        public System.Tuple<double, double> ScreenDimensions
         {
             get
             {
                 var bounds = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView().VisibleBounds;
-                return (bounds.Width, bounds.Height);
+                return Tuple.Create(bounds.Width, bounds.Height);
             }
         }
         public void Quit() => Windows.UI.Xaml.Application.Current.Exit();

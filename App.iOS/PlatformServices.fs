@@ -11,7 +11,7 @@ let supportedInterfaceOrientations =
     else UIKit.UIInterfaceOrientationMask.All
 
 let init () =
-    let iqKeyboard = Xamarin.IQKeyboardManager.SharedManager
+    let iqKeyboard = Hackiftekhar.IQKeyboardManager.Xamarin.IQKeyboardManager.SharedManager()
     iqKeyboard.Enable <- true
     iqKeyboard.ShouldResignOnTouchOutside <- true
     // https://github.com/hackiftekhar/IQKeyboardManager/issues/1122#issuecomment-432897287

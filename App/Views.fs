@@ -126,7 +126,7 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
  // The iPhone 6S sometimes makes views with width/height less than 0.5 device units disappear
  let guardEpsilons n = if 0. < n && n < 0.5 then 0.5 else n
  let boundsXOffset, boundsYOffset =
-    (env.ScreenWidth - totalX * ratio) / 2., (env.ScreenHeight - totalY * ratio) / 2. 
+    (env.ScreenWidth - totalX * ratio) / 2., (env.ScreenHeight - totalY * ratio) / 2.
  let background_bounds x y w h =
      let pos posComp offset =
          if posComp =~ 0R then 0. else posComp * ratio + offset
@@ -173,8 +173,14 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
  member _.background_hRect hex y h = View.BoxView(backgroundColor = colorHex hex) |> background_hBounds y h
  member _.background_vRect hex x w = View.BoxView(backgroundColor = colorHex hex) |> background_vBounds x w
  member _.background_oRect hex x y w h = View.BoxView(backgroundColor = colorHex hex) |> background_bounds x y w h
- member _.background_roundRectFromTop hex h r = View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (0., 0., r * ratio, r * ratio)) |> background_hBounds 0R h
- member _.background_roundRectFromBottom hex h r = View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (r * ratio, r * ratio, 0., 0.)) |> background_hBounds (totalY - h) h
+ member _.background_roundRectFromTop hex h r = [
+    View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (r * ratio)) |> background_hBounds 0R h
+    View.BoxView(backgroundColor = colorHex hex) |> background_hBounds 0R r
+ ]
+ member _.background_roundRectFromBottom hex h r = [
+    View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (r * ratio)) |> background_hBounds (totalY - h) h
+    View.BoxView(backgroundColor = colorHex hex) |> background_hBounds (totalY - r) r
+ ]
  member t.background_rect hex = t.background_oRect hex 0R 0R totalX totalY
  member t.background_hLine hex thickness y = t.background_hRect hex (y - thickness / 2.) thickness
  member t.background_hLineFromLeft hex thickness x y = t.background_oRect hex 0R (y - thickness / 2.) x thickness
@@ -233,7 +239,7 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
      |> applyEffect Effects.xf7538_AndroidEntryCenterAlign
      |> applyBounds left top w h
  member _.rect color x y w h = View.BoxView(backgroundColor = colorHex color) |> applyBounds x y w h
- member _.roundRect color x y w h r = View.BoxView(backgroundColor = colorHex color, cornerRadius = CornerRadius (r * ratio)) |> applyBounds x y w h
+ member _.roundRect color x y w h r = View.BoxView(backgroundColor = colorHex color, cornerRadius = CornerRadius (r * ratio)) |> applyBounds (x) y w h
  member _.shadow color x y w h =
      let shadowThickness = 10R
      View.Frame(hasShadow = true, backgroundColor = colorHex color, margin = Thickness (shadowThickness * ratio))
