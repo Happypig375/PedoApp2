@@ -27,10 +27,14 @@ type PedometerAndroid() =
         :?> Android.Hardware.SensorManager
     let sensor = manager.GetDefaultSensor Android.Hardware.SensorType.StepCounter
     let event = Event<int>()         
-    do manager.RegisterListener(new PedometerListener(event.Trigger), sensor, Android.Hardware.SensorDelay.Fastest)
-       |> ignore
-    interface App.App.Pedometer with member _.Step = event.Publish
-[<UsesPermission("android.permission.ACTIVITY_RECOGNITION")>]
+    do
+        if sensor <> null then
+            manager.RegisterListener(new PedometerListener(event.Trigger), sensor, Android.Hardware.SensorDelay.Fastest)
+            |> ignore
+    interface App.App.Pedometer with
+        member _.IsSupported = sensor <> null
+        member _.Step = event.Publish
+[<UsesPermission(Android.Manifest.Permission.ActivityRecognition)>]
 [<UsesFeature(Name=Android.Hardware.Sensor.StringTypeStepCounter, Required=true)>]
 do ()
 
@@ -40,7 +44,10 @@ type MainActivity() =
     override this.OnCreate(bundle: Bundle) =
         FormsAppCompatActivity.TabLayoutResource <- Resources.Layout.Tabbar
         FormsAppCompatActivity.ToolbarResource <- Resources.Layout.Toolbar
-
+        if AndroidX.Core.Content.ContextCompat.CheckSelfPermission(this,
+            Android.Manifest.Permission.ActivityRecognition) = Permission.Denied then
+            //ask for permission
+            this.RequestPermissions([|Android.Manifest.Permission.ActivityRecognition|], 126783)
         base.OnCreate (bundle)
         Xamarin.Essentials.Platform.Init(this, bundle)
         App.PlatformSpecifics.PlatformServices.init(this, bundle)

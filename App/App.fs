@@ -11,6 +11,7 @@ open Plugin.LocalNotification
 
 module App = 
     type Pedometer =
+        abstract IsSupported : bool
         abstract Step : int IEvent
 
     type Page =
@@ -72,7 +73,12 @@ module App =
     }
 
     let init () =
-        initModel, Cmd.ofSub (fun dispatch -> DependencyService.Get<Pedometer>().Step.Add(PedometerUpdated >> dispatch))
+        initModel, Cmd.ofSub (fun dispatch ->
+            let pedometer = DependencyService.Get<Pedometer>()
+            if pedometer.IsSupported then
+                pedometer.Step.Add(PedometerUpdated >> dispatch)
+            else Xamarin.Forms.Application.Current.MainPage.DisplayAlert("Oh no", "Pedometer is not supported", "Ok")
+                 |> ignore)
 
     let update msg model =
         Xamarin.Essentials.Preferences.Set("alarm", JsonConvert.SerializeObject model.Alarm)

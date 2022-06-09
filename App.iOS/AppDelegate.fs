@@ -8,12 +8,16 @@ open Xamarin.Forms
 open Xamarin.Forms.Platform.iOS
 
 type PedometeriOS() =
-   let pedometer = new CoreMotion.CMPedometer()
-   let event = Event<int>()
-   // steps from midnight
-   do pedometer.StartPedometerUpdates(DateTime.Today.ToNSDate(),
-       Action<_, _>(fun data _ -> event.Trigger data.NumberOfSteps.Int32Value))
-   interface App.App.Pedometer with member _.Step = event.Publish
+    let pedometer = new CoreMotion.CMPedometer()
+    let event = Event<int>()
+    // steps from midnight
+    do
+        if CoreMotion.CMPedometer.IsStepCountingAvailable then
+            pedometer.StartPedometerUpdates(DateTime.Today.ToNSDate(),
+                Action<_, _>(fun data _ -> event.Trigger data.NumberOfSteps.Int32Value))
+    interface App.App.Pedometer with
+        member _.IsSupported = CoreMotion.CMPedometer.IsStepCountingAvailable
+        member _.Step = event.Publish
 
 
 [<Register ("AppDelegate")>]

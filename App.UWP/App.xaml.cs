@@ -25,6 +25,7 @@ namespace App.UWP
                 }
             });
         IEvent<FSharpHandler<int>, int> AppModule.Pedometer.Step => e.Publish;
+        bool AppModule.Pedometer.IsSupported => true;
     }
     /// <summary>
     /// Provides application-specific behavior to supplement the default Application class.

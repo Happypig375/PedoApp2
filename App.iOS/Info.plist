@@ -34,5 +34,7 @@
 	<string>App</string>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/AppIcon.appiconset</string>
+	<key>NSMotionUsageDescription</key>
+	<string>The pedometer needs to be accessed to track your steps.</string>
 </dict>
 </plist>
