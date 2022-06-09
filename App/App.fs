@@ -12,18 +12,29 @@ module App =
     type Page =
     | Main
     | Menu
-    type Model = 
-      { Pedometer : int; Page: Page; ScreenSize: struct(float * float) }
-
+    | Alarm
+    type Model = {
+        Pedometer : int
+        PedometerOffset: int
+        Page: Page
+        ScreenSize: struct(float * float)
+    }
 
     type Msg =
     | PedometerUpdated of int
     | ScreenSizeUpdated of struct(float * float)
-
+    | Reset
+    | OpenMenu
+    | CloseMenu
+    | OpenAlarm
         
-    let initModel = { Pedometer = 0; Page = Main; ScreenSize = PlatformServices.Instance.ScreenDimensions }
+    let initModel = {
+        Pedometer = 0
+        PedometerOffset = 0
+        Page = Main
+        ScreenSize = PlatformServices.Instance.ScreenDimensions
+    }
 
-    
     let init () =
         initModel, Cmd.ofSub (fun dispatch -> DependencyService.Get<Pedometer>().Step.Add(PedometerUpdated >> dispatch))
 
@@ -31,6 +42,10 @@ module App =
         match msg with
         | PedometerUpdated p -> { model with Pedometer = p }, Cmd.none
         | ScreenSizeUpdated size -> { model with ScreenSize = size }, Cmd.none
+        | Reset -> { model with PedometerOffset = model.Pedometer }, Cmd.none
+        | OpenMenu -> { model with Page = Menu }, Cmd.none
+        | CloseMenu -> { model with Page = Main }, Cmd.none
+        | OpenAlarm -> { model with Page = Alarm }, Cmd.none
 
     // https://github.com/fsprojects/Fabulous/issues/648
     let mutable prevWH = struct(-1., -1.)
@@ -40,15 +55,30 @@ module App =
         let views = Views({ Dispatch = dispatch; ScreenWidth = screenWidth; ScreenHeight = screenHeight }, 360R, 640R)
         [
             match model.Page with
-            | Main ->
+            | Main | Menu ->
                 views.background_rect 0xffffff
-                views.background_roundRectTop 0xA9A290 119R 20R
+                views.background_roundRectFromTop 0xA9A290 119R 20R
                 views.drawingConstrained 20R 70R 40R 20R [
-                    Draw.roundRect 0xF2EFE5 Draw.thicknessFill 26R 76R 19.5<R> 6R 3R
-                    Draw.roundRect 0xF2EFE5 Draw.thicknessFill 26R (76R+84R-79R) 19.5<R> 6R 3R
+                    Draw.roundRect 0xF2EFE5 3R 26R 76R 19.5<R> 0R 3R
+                    Draw.roundRect 0xF2EFE5 3R 26R 84R 19.5<R> 0R 3R
                 ]
-                views.textCenter "Pedometer" 24R 0xffffff 68R
-
+                views.buttonInvisible 0R 50R 80R 60R OpenMenu
+                views.text "Pedometer" 24R 0xffffff 119R (68R+24R)
+                views.textCenterRect $"{model.Pedometer - model.PedometerOffset}" 55R 0x000000 0R 220R 360R 62R
+                views.text "Step" 20R 0x000000 158R (299R+20R)
+                views.button "Reset" 13R 0xffffff 0x645B43 ButtonStyle.Round 144R 499R 72R 21R Reset
+                if model.Page = Menu then
+                    views.background_escape CloseMenu
+                    views.background_vRect 0xA9A290 0R 197R
+                    views.drawingConstrained 145R 70R 40R 20R [
+                        Draw.roundRect 0xF2EFE5 3R 152R 76R 19.5<R> 0R 3R
+                        Draw.roundRect 0xF2EFE5 3R 152R 84R 19.5<R> 0R 3R
+                    ]
+                    views.buttonInvisible 130R 50R 80R 60R CloseMenu
+                    views.background_button "Alarm" 16R 0xF2EFE5 0xB8B2A2 ButtonStyle.Rectangular 0R 119R 197R 53R OpenAlarm
+            | Alarm ->
+                views.text "Alarm" 24R 0x645B43 147R (68R+24R)
+                views.background_roundRectFromBottom 0xA9A290 525R 20R
         ]
         |> Views._finalizeToPage (ValueOption.iter dispatch) (fun (w, h) ->
             let currWH =

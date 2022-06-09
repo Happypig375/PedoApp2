@@ -173,12 +173,26 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
  member _.background_hRect hex y h = View.BoxView(backgroundColor = colorHex hex) |> background_hBounds y h
  member _.background_vRect hex x w = View.BoxView(backgroundColor = colorHex hex) |> background_vBounds x w
  member _.background_oRect hex x y w h = View.BoxView(backgroundColor = colorHex hex) |> background_bounds x y w h
- member _.background_roundRectTop hex h r = View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (0., 0., r * ratio, r * ratio)) |> background_hBounds 0R h
+ member _.background_roundRectFromTop hex h r = View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (0., 0., r * ratio, r * ratio)) |> background_hBounds 0R h
+ member _.background_roundRectFromBottom hex h r = View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (r * ratio, r * ratio, 0., 0.)) |> background_hBounds (totalY - h) h
  member t.background_rect hex = t.background_oRect hex 0R 0R totalX totalY
  member t.background_hLine hex thickness y = t.background_hRect hex (y - thickness / 2.) thickness
  member t.background_hLineFromLeft hex thickness x y = t.background_oRect hex 0R (y - thickness / 2.) x thickness
  member t.background_hLineFromRight hex thickness x y = t.background_oRect hex x (y - thickness / 2.) (totalX-x) thickness
  member _.background_hImage (source:ImageSource) y h = View.Image(Image.ImageSource source) |> background_hBounds y h
+ member _.background_button text fontSize textColor backColor style left top w h msg =
+     View.Button(text, fun () -> env.Dispatch msg
+       , textColor = colorHex textColor, fontSize = FontSize.Size (fontSize * ratio), padding = Thickness 0.,
+         backgroundColor = colorHex backColor, borderWidth = 0., borderColor = Color.Transparent,
+         fontAttributes = match style with
+                          | Round | RoundRadius _ | Rectangular | RectangularLeft -> FontAttributes.None
+                          | RoundBold | RectangularBold -> FontAttributes.Bold
+       , cornerRadius = match style with
+                        | Round | RoundBold -> min w h / 2. * ratio |> int
+                        | RoundRadius r -> r * ratio |> int
+                        | Rectangular | RectangularBold | RectangularLeft -> 0
+       , effects = [Effects.zeroPadding])
+       |> background_bounds left top w h
  member _.background_escape msg = // e.g. to close current dropdown
      View.ContentView(gestureRecognizers = [
          View.TapGestureRecognizer(fun () -> env.Dispatch msg)
