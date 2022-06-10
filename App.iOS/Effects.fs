@@ -21,20 +21,20 @@ type Borderless() = inherit Control(function
     | :? UIKit.UITextField as text -> 
         text.Layer.BorderWidth <- System.nfloat 0.
         text.BorderStyle <- UIKit.UITextBorderStyle.None
-    | c -> App.EffectFailure(typeof<Borderless>, c)
+    | c -> Effects.Failure.Report(typeof<Borderless>, c)
 )
 [<Export(typeof<Borderless>, Effects.Borderless)>] do ()
 
 type CenterPicker() = inherit Control(function
     | :? UIKit.UITextField as pickerEntry -> pickerEntry.TextAlignment <- UIKit.UITextAlignment.Center
-    | c -> App.EffectFailure(typeof<CenterPicker>, c)
+    | c -> Effects.Failure.Report(typeof<CenterPicker>, c)
 )
 [<Export(typeof<CenterPicker>, Effects.CenterPicker)>] do ()
 
 type ButtonLeftAlign() =
     inherit Control(function
     | :? UIKit.UIButton as button -> button.HorizontalAlignment <- UIKit.UIControlContentHorizontalAlignment.Left
-    | c -> App.EffectFailure(typeof<ButtonLeftAlign>, c)
+    | c -> Effects.Failure.Report(typeof<ButtonLeftAlign>, c)
     , function
     | :? UIKit.UIButton as button -> button.HorizontalAlignment <- UIKit.UIControlContentHorizontalAlignment.Center
     | _ -> ())

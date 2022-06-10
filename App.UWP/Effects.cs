@@ -44,7 +44,7 @@ namespace App.PlatformSpecifics
         public Borderless() : base(c => {
             if (c is Windows.UI.Xaml.Controls.Control control)
                 control.Margin = control.Padding = control.BorderThickness = default;
-            else App.EffectFailure(typeof(Borderless), c);
+            else Effects.Failure.Report(typeof(Borderless), c);
         })
         { }
     }
@@ -56,7 +56,7 @@ namespace App.PlatformSpecifics
                 pickerBox.HorizontalContentAlignment = Windows.UI.Xaml.HorizontalAlignment.Center;
                 pickerBox.Style = (Windows.UI.Xaml.Style)Windows.UI.Xaml.Application.Current.Resources["NoDropDownStyle"];
             }
-            else App.EffectFailure(typeof(CenterPicker), c);
+            else Effects.Failure.Report(typeof(CenterPicker), c);
         })
         { }
     }
@@ -65,7 +65,7 @@ namespace App.PlatformSpecifics
         public ButtonLeftAlign() : base(c => {
             if (c is Windows.UI.Xaml.Controls.Button button)
                 button.HorizontalContentAlignment = Windows.UI.Xaml.HorizontalAlignment.Left;
-            else App.EffectFailure(typeof(ButtonLeftAlign), c);
+            else Effects.Failure.Report(typeof(ButtonLeftAlign), c);
         }, c => {
             if (c is Windows.UI.Xaml.Controls.Button button)
                 button.HorizontalContentAlignment = Windows.UI.Xaml.HorizontalAlignment.Center;
@@ -77,7 +77,7 @@ namespace App.PlatformSpecifics
         public ZeroPadding() : base(c => {
             if (c is Windows.UI.Xaml.Controls.Control control)
                 control.Padding = default;
-            else App.EffectFailure(typeof(ZeroPadding), c);
+            else Effects.Failure.Report(typeof(ZeroPadding), c);
         })
         { }
     }

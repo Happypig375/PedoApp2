@@ -106,27 +106,21 @@ module Views =
      let path colorHex thickness path =
          DrawElement(fun canvas paint ->
             use path = SKPath.ParseSvgPathData path in canvas.DrawPath(path, assign colorHex thickness paint))
- let _finalizeToPage dispatch updateScreenSize views =
-     Seq.toList views
-     |> fun l -> View.AbsoluteLayout l
-     |> fun a -> View.ContentPage(a, sizeAllocated = (updateScreenSize >> dispatch))
  type [<Struct>] SelectedPickerID<'ID when 'ID : equality> = SelectedPickerID of 'ID | SelectedNoPickers
  type [<NoComparison; NoEquality>] Picker<'ID, 'UpdateDropdown when 'ID : equality> =
     Picker of 'ID * baseButton:('UpdateDropdown -> ViewElement) * dropdown:('UpdateDropdown -> ViewElement list)
- type [<NoComparison; NoEquality>] ViewsEnvironment<'Message> = {
-     Dispatch : 'Message -> unit
-     ScreenWidth : float
-     ScreenHeight : float
- }
 open Views
 /// Views from SVG data
-type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY : float<R>) =
+type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, totalX : float<R>, totalY : float<R>) =
+ // https://github.com/fsprojects/Fabulous/issues/648
+ static let mutable _prevWH = -1., -1.
+ let screenWidthInDevicePixels, screenHeightInDevicePixels = screenSize
  /// Screen units to layout units ratio 
- let ratio = min (env.ScreenWidth / totalX) (env.ScreenHeight / totalY)
+ let ratio = min (screenWidthInDevicePixels / totalX) (screenHeightInDevicePixels / totalY)
  // The iPhone 6S sometimes makes views with width/height less than 0.5 device units disappear
  let guardEpsilons n = if 0. < n && n < 0.5 then 0.5 else n
  let boundsXOffset, boundsYOffset =
-    (env.ScreenWidth - totalX * ratio) / 2., (env.ScreenHeight - totalY * ratio) / 2.
+    (screenWidthInDevicePixels - totalX * ratio) / 2., (screenHeightInDevicePixels - totalY * ratio) / 2.
  let background_bounds x y w h =
      let pos posComp offset =
          if posComp =~ 0R then 0. else posComp * ratio + offset
@@ -169,15 +163,28 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
  //    ]
  member _.info_totalX = totalX
  member _.info_totalY = totalY
- member _.info_isLandscape = env.ScreenWidth > env.ScreenHeight
+ member _.info_isLandscape = screenWidthInDevicePixels > screenHeightInDevicePixels
+ member _._finalize updateScreenSize views =
+     Seq.toList views
+     |> fun l -> View.AbsoluteLayout l
+     |> fun a -> View.ContentPage(a, sizeAllocated = fun (w, h) ->
+            let currWH =
+                if w = 0. || h = 0.
+                then PlatformServices.Instance.ScreenDimensions
+                else (w, h - PlatformServices.Instance.HeightDecrease)
+            if _prevWH = currWH then ValueNone
+            else _prevWH <- currWH
+                 ValueSome <| updateScreenSize currWH
+            |> ValueOption.iter dispatch
+      )
  member _.background_hRect hex y h = View.BoxView(backgroundColor = colorHex hex) |> background_hBounds y h
  member _.background_vRect hex x w = View.BoxView(backgroundColor = colorHex hex) |> background_vBounds x w
  member _.background_oRect hex x y w h = View.BoxView(backgroundColor = colorHex hex) |> background_bounds x y w h
- member _.background_roundRectFromTop hex h r = [
+ member t.background_roundRectFromTop hex h r = t.merge [
     View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (r * ratio)) |> background_hBounds 0R h
     View.BoxView(backgroundColor = colorHex hex) |> background_hBounds 0R r
  ]
- member _.background_roundRectFromBottom hex h r = [
+ member t.background_roundRectFromBottom hex h r = t.merge [
     View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (r * ratio)) |> background_hBounds (totalY - h) h
     View.BoxView(backgroundColor = colorHex hex) |> background_hBounds (totalY - r) r
  ]
@@ -187,7 +194,7 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
  member t.background_hLineFromRight hex thickness x y = t.background_oRect hex x (y - thickness / 2.) (totalX-x) thickness
  member _.background_hImage (source:ImageSource) y h = View.Image(Image.ImageSource source) |> background_hBounds y h
  member _.background_button text fontSize textColor backColor style left top w h msg =
-     View.Button(text, fun () -> env.Dispatch msg
+     View.Button(text, fun () -> dispatch msg
        , textColor = colorHex textColor, fontSize = FontSize.Size (fontSize * ratio), padding = Thickness 0.,
          backgroundColor = colorHex backColor, borderWidth = 0., borderColor = Color.Transparent,
          fontAttributes = match style with
@@ -201,7 +208,7 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
        |> background_bounds left top w h
  member _.background_escape msg = // e.g. to close current dropdown
      View.ContentView(gestureRecognizers = [
-         View.TapGestureRecognizer(fun () -> env.Dispatch msg)
+         View.TapGestureRecognizer(fun () -> dispatch msg)
      ]) |> background_bounds 0R 0R totalX totalY
  
  member _.group dx dy = List.map (applyBoundsMap (fun x -> Rectangle(x.X + dx * ratio, x.Y + dy * ratio, x.Width, x.Height)))
@@ -229,7 +236,7 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
          | keyboard -> keyboard, false
      View.Entry(text, fontSize = FontSize.Size (fontSize * ratio), textColor = colorHex textColor, keyboard = keyboard, 
          placeholder = placeholder, placeholderColor = colorHex placeholderColor, backgroundColor = colorHex transparent,
-         isPassword = isPassword, textChanged = fun args -> args.NewTextValue |> textChanged |> env.Dispatch
+         isPassword = isPassword, textChanged = fun args -> args.NewTextValue |> textChanged |> dispatch
        , effects = [Effects.borderless]
      ) |> applyBounds (x - 1R) (y - fontSize - 4R) (right - x + 1R) (fontSize + 11R)
  member t.textEditCenter keyboard text fontSize textColor placeholder placeholderColor left top w h textChanged =
@@ -254,15 +261,15 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
  member _.imageFill x y w h (file:ImageSource) =
      View.CachedImage(source = Image.ImageSource file, aspect = Aspect.AspectFill, loadingPlaceholder = Image.ImageSource Images.``empty.png``) |> applyBounds x y w h
  member _.buttonInvisible left top w h msg = 
-     View.Button("", fun () -> env.Dispatch msg
+     View.Button("", fun () -> dispatch msg
        , padding = Thickness 0., backgroundColor = Color.Transparent, borderColor = Color.Transparent,
        effects = [Effects.zeroPadding])
        |> applyBounds left top w h
  member _.buttonInvisibleMultiPress pressCount left top w h msg = 
-     View.ContentView(gestureRecognizers = [View.TapGestureRecognizer(numberOfTapsRequired = pressCount, command = fun () -> env.Dispatch msg)])
+     View.ContentView(gestureRecognizers = [View.TapGestureRecognizer(numberOfTapsRequired = pressCount, command = fun () -> dispatch msg)])
      |> applyBounds left top w h
  member _.buttonMultiMsg text fontSize textColor backColor style left top w h msgs =
-     View.Button(text, fun () -> Seq.iter env.Dispatch msgs
+     View.Button(text, fun () -> Seq.iter dispatch msgs
        , textColor = colorHex textColor, fontSize = FontSize.Size (fontSize * ratio), padding = Thickness 0.,
          backgroundColor = colorHex backColor, borderWidth = 0., borderColor = Color.Transparent,
          fontAttributes = match style with
@@ -369,7 +376,7 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
              |> Seq.toList
          ), orientation = match listType with Horizontal -> ScrollOrientation.Horizontal | Vertical -> ScrollOrientation.Vertical
      , scrollTo = match listType with Horizontal -> scrollTo, 0., NotAnimated | Vertical -> 0., scrollTo, NotAnimated
-     , scrolled = fun e -> (match listType with Horizontal -> e.ScrollX | Vertical -> e.ScrollY) |> updateScrollTo |> env.Dispatch) |> applyBounds x y w h
+     , scrolled = fun e -> (match listType with Horizontal -> e.ScrollX | Vertical -> e.ScrollY) |> updateScrollTo |> dispatch) |> applyBounds x y w h
  member t.list_ listType (itemTemplateLeft, itemTemplateTop, itemTemplateRight, itemTemplateBottom, itemTemplate)
      x y w h scrollTo updateScrollTo source =
      t.listGrouped_ listType (0R, 0R, 0R, 0R, fun () -> None)
@@ -509,6 +516,21 @@ type Views<'Message>(env : ViewsEnvironment<'Message>, totalX : float<R>, totalY
             baseButton
         ]
      |}
+ static member val private touchAreaLocalInteractionIds = Collections.Generic.HashSet()
+ member _.touchArea capturePassthroughInteractions x y w h handler =
+    View.SKCanvasView(enableTouchEvents = true, touch = fun e ->
+        e.Handled <- true
+        if e.ActionType = Forms.SKTouchAction.Pressed then Views<_>.touchAreaLocalInteractionIds.Add e.Id |> ignore
+        if (e.InContact || e.ActionType = Forms.SKTouchAction.Released)
+           && (capturePassthroughInteractions || Views<_>.touchAreaLocalInteractionIds.Contains e.Id) then
+            let density = Xamarin.Essentials.DeviceDisplay.MainDisplayInfo.Density
+            handler (float e.Location.X / density / ratio + x)
+                    (float e.Location.Y / density / ratio + y) e.ActionType
+        match e.ActionType with
+        | Forms.SKTouchAction.Released | Forms.SKTouchAction.Cancelled ->
+            Views<_>.touchAreaLocalInteractionIds.Remove e.Id |> ignore
+        | _ -> ()
+    ) |> applyBounds x y w h
  member _.clipRect views =
      List.fold (fun rect (view:ViewElement) ->
          match rect, view.TryGetAttributeKeyed ViewAttributes.LayoutBoundsAttribKey with

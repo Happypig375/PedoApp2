@@ -29,7 +29,7 @@ type Borderless() = inherit Control(fun c ->
 type CenterPicker() = inherit Control(function
     | :? Android.Widget.EditText as pickerEntry ->
         pickerEntry.Gravity <- Android.Views.GravityFlags.Center
-    | c -> App.EffectFailure(typeof<CenterPicker>, c)
+    | c -> Effects.Failure.Report(typeof<CenterPicker>, c)
 )
 [<assembly: Export(typeof<CenterPicker>, Effects.CenterPicker)>] do ()
 
@@ -37,7 +37,7 @@ type ButtonLeftAlign() =
     inherit Control(function
     | :? Android.Widget.Button as button ->
         button.Gravity <- Android.Views.GravityFlags.Left ||| Android.Views.GravityFlags.CenterVertical
-    | c -> App.EffectFailure(typeof<ButtonLeftAlign>, c)
+    | c -> Effects.Failure.Report(typeof<ButtonLeftAlign>, c)
     , function
     | :? Android.Widget.Button as button ->
         button.Gravity <- Android.Views.GravityFlags.Center
@@ -52,7 +52,7 @@ type XF7538_AndroidEntryCenterAlign() =
     inherit Control(
         function
         | :? Android.Widget.EditText as entry -> entry.Gravity <- Android.Views.GravityFlags.Center
-        | c -> App.EffectFailure(typeof<XF7538_AndroidEntryCenterAlign>, c)
+        | c -> Effects.Failure.Report(typeof<XF7538_AndroidEntryCenterAlign>, c)
       , function
         | :? Android.Widget.EditText as entry -> entry.Gravity <- Android.Views.GravityFlags.Start | _ -> ())
 [<assembly: Export(typeof<XF7538_AndroidEntryCenterAlign>, Effects.XF7538_AndroidEntryCenterAlign)>] do ()

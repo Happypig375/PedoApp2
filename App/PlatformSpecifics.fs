@@ -10,6 +10,11 @@ module PlatformServices =
     let mutable Instance = Unchecked.defaultof<IPlatformServices>
 
 module Effects =
+    type Failure =
+        static member Report(effectType: System.Type, actualControl: obj, [<System.Runtime.InteropServices.Optional>] step: string) =
+            Printf.ksprintf System.Diagnostics.Debug.WriteLine "Effect %O%swas NOT applied because of an unexpected control: %O (Type:%s)"
+                effectType (match step with null -> " " | x -> sprintf " at step '%s' " x) actualControl (actualControl.GetType().FullName)
+
     // ** Effects cannot be reused, make them functions instead of values! **
     let [<Literal>] _GroupName = "App"
     type BaseBasicEffect(id) = inherit Xamarin.Forms.RoutingEffect(_GroupName + "." + id)

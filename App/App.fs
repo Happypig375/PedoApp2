@@ -10,9 +10,11 @@ open Xamarin.Essentials
 open Plugin.LocalNotification
 
 module App = 
+    open Views
+    type Action = SkiaSharp.Views.Forms.SKTouchAction
     type Pedometer =
         abstract IsSupported : bool
-        abstract Step : int IEvent
+        abstract Step : IEvent<int>
 
     type Page =
     | Main
@@ -27,6 +29,7 @@ module App =
         Thursday : bool
         Friday : bool
         Saturday : bool
+        Frequency : int
     }
     type Model = {
         Pedometer : int
@@ -34,6 +37,7 @@ module App =
         Page: Page
         ScreenSize: (float * float)
         Alarm: Alarm
+        KnobXCoordinate: float<R>
     }
 
     type Msg =
@@ -50,16 +54,16 @@ module App =
     | SwitchWednesday
     | SwitchThursday 
     | SwitchFriday
-    | SwitchSaturday 
-        
-    let initModel = {
-        Pedometer = 0
-        PedometerOffset = 0
-        Page = Main
-        ScreenSize = PlatformServices.Instance.ScreenDimensions
-        Alarm =
+    | SwitchSaturday
+    | MoveKnob of float<R>
+    | ReleaseKnob
+
+    let knobXCoordinateFromFrequency frequency = float (frequency - 1) * (284R-64R)/2. + 64R
+    let knobXCoordinateToFrequency x = round ((x - 64R) / ((284R-64R)/2.) + 1.) |> int
+    let init () =
+        let alarm =
             if Preferences.ContainsKey "alarm"
-            then Xamarin.Essentials.Preferences.Get("alarm", "") |> JsonConvert.DeserializeObject<_>
+            then Preferences.Get("alarm", "") |> JsonConvert.DeserializeObject<_>
             else {
                 Enabled = false
                 Sunday = false
@@ -69,34 +73,54 @@ module App =
                 Thursday = false
                 Friday = false
                 Saturday = false
+                Frequency = 1
             }
-    }
-
-    let init () =
-        initModel, Cmd.ofSub (fun dispatch ->
+        {
+            Pedometer = 0
+            PedometerOffset = 0
+            Page = Main
+            ScreenSize = PlatformServices.Instance.ScreenDimensions
+            Alarm = alarm
+            KnobXCoordinate = knobXCoordinateFromFrequency alarm.Frequency
+        }, Cmd.ofSub (fun dispatch ->
             let pedometer = DependencyService.Get<Pedometer>()
             if pedometer.IsSupported then
                 pedometer.Step.Add(PedometerUpdated >> dispatch)
-            else Xamarin.Forms.Application.Current.MainPage.DisplayAlert("Oh no", "Pedometer is not supported", "Ok")
-                 |> ignore)
-
+            else Application.Current.MainPage.DisplayAlert("Oh no", "Pedometer is not supported", "Ok")
+                 |> ignore
+        )
     let update msg model =
         Xamarin.Essentials.Preferences.Set("alarm", JsonConvert.SerializeObject model.Alarm)
         let now = DateTime.Now
-        let notify (dayOfWeek: DayOfWeek) =
-            NotificationCenter.Current.Show(
-                NotificationRequest(
-                    Title = "Time to walk",
-                    Schedule = NotificationRequestSchedule(
-                        NotifyTime = now.AddDays(
-                            if dayOfWeek = now.DayOfWeek then 7 else (7 + int dayOfWeek - int now.DayOfWeek) % 7
-                            |> float).Date,
-                        RepeatType = NotificationRepeat.Weekly
-                    ),
-                    NotificationId = int dayOfWeek
-                )
-            ) |> ignore
-        let cancel (dayOfWeek: DayOfWeek) = NotificationCenter.Current.Cancel(int dayOfWeek) |> ignore
+        let notify frequency (dayOfWeek: DayOfWeek) =
+            for i in 1 .. frequency do
+                NotificationCenter.Current.Show(
+                    NotificationRequest(
+                        Title = "Time to walk",
+                        Schedule = NotificationRequestSchedule(
+                            NotifyTime = now.AddDays(
+                                if dayOfWeek = now.DayOfWeek then 7 else (7 + int dayOfWeek - int now.DayOfWeek) % 7
+                                |> float).Date.AddHours(9 + 6 * (i - 1) |> float),
+                            RepeatType = NotificationRepeat.Weekly
+                        ),
+                        NotificationId = int dayOfWeek + 7 * i
+                    )
+                ) |> ignore
+        let notifyAll frequency =
+            if model.Alarm.Sunday then notify frequency DayOfWeek.Sunday
+            if model.Alarm.Monday then notify frequency DayOfWeek.Monday
+            if model.Alarm.Tuesday then notify frequency DayOfWeek.Tuesday
+            if model.Alarm.Wednesday then notify frequency DayOfWeek.Wednesday
+            if model.Alarm.Thursday then notify frequency DayOfWeek.Thursday
+            if model.Alarm.Friday then notify frequency DayOfWeek.Friday
+            if model.Alarm.Saturday then notify frequency DayOfWeek.Saturday
+        let cancel (dayOfWeek: DayOfWeek) =
+            for i in 1 .. model.Alarm.Frequency do
+                NotificationCenter.Current.Cancel(int dayOfWeek + 7 * i) |> ignore
+        let cancelAll() = NotificationCenter.Current.CancelAll() |> ignore
+        let switchDay condition dayOfWeek updatedAlarm =
+            (if condition then cancel else notify model.Alarm.Frequency) dayOfWeek
+            { model with Alarm = updatedAlarm }, Cmd.none
         match msg with
         | PedometerUpdated p -> { model with Pedometer = p }, Cmd.none
         | ScreenSizeUpdated size -> { model with ScreenSize = size }, Cmd.none
@@ -105,50 +129,28 @@ module App =
         | CloseMenu -> { model with Page = Main }, Cmd.none
         | OpenAlarm -> { model with Page = Alarm }, Cmd.none
         | SwitchAlarm ->
-            if model.Alarm.Enabled
-            then NotificationCenter.Current.CancelAll() |> ignore
-            else
-                if model.Alarm.Sunday then notify DayOfWeek.Sunday
-                if model.Alarm.Monday then notify DayOfWeek.Monday
-                if model.Alarm.Tuesday then notify DayOfWeek.Tuesday
-                if model.Alarm.Wednesday then notify DayOfWeek.Wednesday
-                if model.Alarm.Thursday then notify DayOfWeek.Thursday
-                if model.Alarm.Friday then notify DayOfWeek.Friday
-                if model.Alarm.Saturday then notify DayOfWeek.Saturday
+            if model.Alarm.Enabled then cancelAll() else notifyAll model.Alarm.Frequency
             { model with Alarm = { model.Alarm with Enabled = not model.Alarm.Enabled } }, Cmd.none
-        | SwitchSunday ->
-            if model.Alarm.Enabled then (if model.Alarm.Sunday then cancel else notify) DayOfWeek.Sunday
-            { model with Alarm = { model.Alarm with Sunday = not model.Alarm.Sunday } }, Cmd.none
-        | SwitchMonday ->
-            if model.Alarm.Enabled then (if model.Alarm.Monday then cancel else notify) DayOfWeek.Monday
-            { model with Alarm = { model.Alarm with Monday = not model.Alarm.Monday } }, Cmd.none
-        | SwitchTuesday ->
-            if model.Alarm.Enabled then (if model.Alarm.Tuesday then cancel else notify) DayOfWeek.Tuesday
-            { model with Alarm = { model.Alarm with Tuesday = not model.Alarm.Tuesday } }, Cmd.none
-        | SwitchWednesday ->
-            if model.Alarm.Enabled then (if model.Alarm.Wednesday then cancel else notify) DayOfWeek.Wednesday
-            { model with Alarm = { model.Alarm with Wednesday = not model.Alarm.Wednesday } }, Cmd.none
-        | SwitchThursday ->
-            if model.Alarm.Enabled then (if model.Alarm.Thursday then cancel else notify) DayOfWeek.Thursday
-            { model with Alarm = { model.Alarm with Thursday = not model.Alarm.Thursday } }, Cmd.none
-        | SwitchFriday ->
-            if model.Alarm.Enabled then (if model.Alarm.Friday then cancel else notify) DayOfWeek.Friday
-            { model with Alarm = { model.Alarm with Friday = not model.Alarm.Friday } }, Cmd.none
-        | SwitchSaturday ->
-            if model.Alarm.Enabled then (if model.Alarm.Saturday then cancel else notify) DayOfWeek.Saturday
-            { model with Alarm = { model.Alarm with Saturday = not model.Alarm.Saturday } }, Cmd.none
-
-    // https://github.com/fsprojects/Fabulous/issues/648
-    let mutable prevWH = -1., -1.
-    open Views
+        | SwitchSunday -> switchDay model.Alarm.Sunday DayOfWeek.Sunday { model.Alarm with Sunday = not model.Alarm.Sunday }
+        | SwitchMonday -> switchDay model.Alarm.Monday DayOfWeek.Monday { model.Alarm with Monday = not model.Alarm.Monday }
+        | SwitchTuesday -> switchDay model.Alarm.Tuesday DayOfWeek.Tuesday { model.Alarm with Tuesday = not model.Alarm.Tuesday }
+        | SwitchWednesday -> switchDay model.Alarm.Wednesday DayOfWeek.Wednesday { model.Alarm with Wednesday = not model.Alarm.Wednesday }
+        | SwitchThursday -> switchDay model.Alarm.Thursday DayOfWeek.Thursday { model.Alarm with Thursday = not model.Alarm.Thursday }
+        | SwitchFriday -> switchDay model.Alarm.Friday DayOfWeek.Friday { model.Alarm with Friday = not model.Alarm.Friday }
+        | SwitchSaturday -> switchDay model.Alarm.Saturday DayOfWeek.Saturday { model.Alarm with Saturday = not model.Alarm.Saturday }
+        | MoveKnob x -> { model with KnobXCoordinate = x }, Cmd.none
+        | ReleaseKnob ->
+            let frequency = knobXCoordinateToFrequency model.KnobXCoordinate
+            cancelAll()
+            notifyAll frequency
+            { model with KnobXCoordinate = knobXCoordinateFromFrequency frequency; Alarm = { model.Alarm with Frequency = frequency } }, Cmd.none
     let view (model: Model) dispatch =
-        let screenWidth, screenHeight = model.ScreenSize
-        let views = Views({ Dispatch = dispatch; ScreenWidth = screenWidth; ScreenHeight = screenHeight }, 360R, 640R)
+        let views = Views(dispatch, model.ScreenSize, 360R, 640R)
         [
             match model.Page with
             | Main | Menu ->
                 views.background_rect 0xffffff
-                yield! views.background_roundRectFromTop 0xA9A290 119R 20R
+                views.background_roundRectFromTop 0xA9A290 119R 20R
                 views.drawingConstrained 20R 70R 40R 20R [
                     Draw.roundRect 0xF2EFE5 3R 26R 76R 19.5<R> 0R 3R
                     Draw.roundRect 0xF2EFE5 3R 26R 84R 19.5<R> 0R 3R
@@ -171,7 +173,7 @@ module App =
                 views.background_rect 0xffffff
                 views.text "Alarm" 24R 0x645B43 147R (68R+24R)
                 views.background_escape CloseMenu
-                yield! views.background_roundRectFromBottom 0xA9A290 525R 20R
+                views.background_roundRectFromBottom 0xA9A290 525R 20R
                 views.text "Notification" 24R 0xF2EFE5 55R (160R+24R)
                 views.text "Remain you to have a walk" 14R 0xF2EFE5 55R (189R+17R)
                 views.drawingConstrained 260R 160R 55R 35R [
@@ -182,29 +184,34 @@ module App =
                          164R 22R 22R 11R
                 ]
                 views.buttonInvisible 250R 150R 75R 50R SwitchAlarm
-                views.background_hRect (rgba(255, 255, 255, 0.2)) 280R 107R
-                views.text "Repeat every" 17R 0xF2EFE5 122R (291R+17R)
-                let daySwitch (text: string) (left: float<R>) (on: bool) (msg: Msg) =
-                    views.button text 20R (if on then 0xF2EFE5 else 0x848484)
-                        (if on then 0x645B43 else 0xF5F3EA) ButtonStyle.Round left 330R 33R 33R msg
-                daySwitch "M" 28R model.Alarm.Monday SwitchMonday
-                daySwitch "T" 73R model.Alarm.Tuesday SwitchTuesday
-                daySwitch "W" 118R model.Alarm.Wednesday SwitchWednesday
-                daySwitch "T" 163R model.Alarm.Thursday SwitchThursday
-                daySwitch "F" 208R model.Alarm.Friday SwitchFriday
-                daySwitch "S" 253R model.Alarm.Saturday SwitchSaturday
-                daySwitch "S" 298R model.Alarm.Sunday SwitchSunday
-        ]
-        |> Views._finalizeToPage (ValueOption.iter dispatch) (fun (w, h) ->
-            let currWH =
-                if w = 0. || h = 0.
-                then PlatformServices.Instance.ScreenDimensions
-                else (w, h - PlatformServices.Instance.HeightDecrease)
-            if prevWH = currWH then ValueNone
-            else prevWH <- currWH
-                 ValueSome <| ScreenSizeUpdated currWH)
+                if model.Alarm.Enabled then
+                    views.background_hRect (rgba(255, 255, 255, 0.2)) 280R 107R
+                    views.text "Repeat every" 17R 0xF2EFE5 122R (291R+17R)
+                    let daySwitch (text: string) (left: float<R>) (on: bool) (msg: Msg) =
+                        views.button text 20R (if on then 0xF2EFE5 else 0x848484)
+                            (if on then 0x645B43 else 0xF5F3EA) ButtonStyle.Round left 330R 33R 33R msg
+                    daySwitch "M" 28R model.Alarm.Monday SwitchMonday
+                    daySwitch "T" 73R model.Alarm.Tuesday SwitchTuesday
+                    daySwitch "W" 118R model.Alarm.Wednesday SwitchWednesday
+                    daySwitch "T" 163R model.Alarm.Thursday SwitchThursday
+                    daySwitch "F" 208R model.Alarm.Friday SwitchFriday
+                    daySwitch "S" 253R model.Alarm.Saturday SwitchSaturday
+                    daySwitch "S" 298R model.Alarm.Sunday SwitchSunday
+                    views.text "Number if walk per day" 17R 0xF2EFE5 97R (435R+17R)
+                    views.roundRect 0xF2EFE5 (70R-4.5<R>) (492R-4.5<R>) (225.5<R> + 4.5<R>*2.) (4.5<R>*2.) 4.5<R>
+                    views.roundRect 0x645B43 (70R-2R) (492R-2R) (model.KnobXCoordinate - (70R-2R) + 5R) (2R * 2.) 2R
+                    views.textBordered $"{knobXCoordinateToFrequency model.KnobXCoordinate}" 15R
+                        0xFFFFFF 0x645B43 transparent 0R ButtonStyle.Round model.KnobXCoordinate 481R 22R 22R
+                    views.touchArea false 55R 470R 275R 50R (fun x _ e ->
+                        match e with
+                        | Action.Moved ->
+                            x - 22R/2. |> min 284R |> max 64R |> MoveKnob |> dispatch
+                        | Action.Released ->
+                            dispatch ReleaseKnob
+                        | _ -> ()
+                    )
+        ] |> views._finalize ScreenSizeUpdated
 
-    // Note, this declaration is needed if you enable LiveUpdate
     let program =
         XamarinFormsProgram.mkProgram init update view
 #if DEBUG
@@ -217,7 +224,3 @@ type App () as app =
     let runner = 
         App.program
         |> XamarinFormsProgram.run app
-
-    static member EffectFailure (effectType: System.Type, actualControl: obj, [<System.Runtime.InteropServices.Optional>] step: string) =
-        Printf.ksprintf System.Diagnostics.Debug.WriteLine "Effect %O%swas NOT applied because of an unexpected control: %O (Type:%s)"
-            effectType (match step with null -> " " | x -> sprintf " at step '%s' " x) actualControl (actualControl.GetType().FullName)
