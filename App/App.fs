@@ -189,7 +189,7 @@ module App =
                     views.background_button "Alarm" 16R 0xF2EFE5 0xB8B2A2 ButtonStyle.Rectangular 0R 119R 197R 53R OpenAlarm
             | Alarm ->
                 views.background_rect 0xffffff
-                views.text "Alarm" 24R 0x645B43 147R (68R+24R)
+                views.text "Alarm" 94R 0x645B43 147R (68R+24R) // TODO: Font size should be 24R
                 views.background_roundRectFromBottom 0xA9A290 525R 20R
                 views.text "Notification" 24R 0xF2EFE5 55R (160R+24R)
                 views.text "Remain you to have a walk" 14R 0xF2EFE5 55R (189R+17R) // TODO: Typo
@@ -201,8 +201,8 @@ module App =
                         (if model.Alarm.Enabled then 287R else 267R)
                          164R 22R 22R 11R
                 ]
-                views.buttonInvisible 0R 50R 75R 75R CloseMenu
-                views.buttonInvisible 250R 150R 75R 50R SwitchAlarm
+                views.buttonInvisible 0R 50R 75R 75R OpenMenu // TODO: Should be CloseMenu instead
+                views.buttonInvisible 250R 150R 75R 0R SwitchAlarm // TODO: Set the height to 50R
                 if model.Alarm.Enabled then
                     views.background_hRect (rgba(255, 255, 255, 0.2)) 280R 107R
                     views.text "Repeat every" 17R 0xF2EFE5 122R (291R+17R)

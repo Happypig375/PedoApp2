@@ -35,14 +35,15 @@ type PedometerAndroid() =
         member _.IsSupported = sensor <> null
         member _.Step = event.Publish
 
-[<UsesFeature(Name=Android.Hardware.Sensor.StringTypeStepCounter, Required=true)>]
+[<UsesFeature(Name = Android.Hardware.Sensor.StringTypeStepCounter, Required = true)>]
 [<UsesPermission(Android.Manifest.Permission.ActivityRecognition)>]
+[<Application(Label = "Custom Pedometer")>]
 do ()
 
-[<Activity (Label = "App.Android", Icon = "@drawable/icon", Theme = "@style/OverriddenMainTheme", MainLauncher = true, ConfigurationChanges = (ConfigChanges.ScreenSize ||| ConfigChanges.Orientation))>]
+[<Activity (Icon = "@drawable/icon", Theme = "@style/OverriddenMainTheme", MainLauncher = true, ConfigurationChanges = (ConfigChanges.ScreenSize ||| ConfigChanges.Orientation))>]
 type MainActivity() =
     inherit FormsAppCompatActivity()
-    let [<Literal>] activityRecognitionRequestCode = -1483743225
+    let [<Literal>] activityRecognitionRequestCode = 1483743225
     member this.RequestPedometerPermissionThenStart() =
         if AndroidX.Core.Content.ContextCompat.CheckSelfPermission(this,
             Android.Manifest.Permission.ActivityRecognition) = Permission.Denied then

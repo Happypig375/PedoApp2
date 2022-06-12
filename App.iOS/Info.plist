@@ -23,9 +23,9 @@
 	<key>MinimumOSVersion</key>
 	<string>10.0</string>
 	<key>CFBundleDisplayName</key>
-	<string>App</string>
+	<string>Custom Pedometer</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.ictinpe.pedoappv2</string>
+	<string>com.ictinpe.pedoapp</string>
 	<key>CFBundleVersion</key>
 	<string>1.0</string>
 	<key>UILaunchStoryboardName</key>
