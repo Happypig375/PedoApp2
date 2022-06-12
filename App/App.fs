@@ -40,7 +40,7 @@ module App =
         KnobXCoordinate: float<R>
     }
 
-    type Msg =
+    type Message =
     | PedometerUpdated of int
     | ScreenSizeUpdated of (float * float)
     | Reset
@@ -206,9 +206,9 @@ module App =
                 if model.Alarm.Enabled then
                     views.background_hRect (rgba(255, 255, 255, 0.2)) 280R 107R
                     views.text "Repeat every" 17R 0xF2EFE5 122R (291R+17R)
-                    let daySwitch (text: string) (left: float<R>) (on: bool) (msg: Msg) =
+                    let daySwitch (text: string) (left: float<R>) (on: bool) (message: Message) =
                         views.button text 20R (if on then 0xF2EFE5 else 0x848484)
-                            (if on then 0x645B43 else 0xF5F3EA) ButtonStyle.Round left 330R 33R 33R msg
+                            (if on then 0x645B43 else 0xF5F3EA) ButtonStyle.Round left 330R 33R 33R message
                     daySwitch "M" 28R model.Alarm.Monday SwitchMonday
                     // TODO: Tuesday button with left X coordinate 73R. Hint: Ctrl+D to duplicate an entire line
                     daySwitch "W" 118R model.Alarm.Wednesday SwitchWednesday

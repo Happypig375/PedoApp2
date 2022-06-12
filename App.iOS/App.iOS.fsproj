@@ -17,6 +17,9 @@
     <MtouchHttpClientHandler>NSUrlSessionHandler</MtouchHttpClientHandler>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <ProvisioningType>manual</ProvisioningType>
+    <SelectedDevice>Local Device</SelectedDevice>
+    <SelectedPlatformGroup>LocalDevice</SelectedPlatformGroup>
+    <ActiveDebugProfile>Local Device</ActiveDebugProfile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|iPhoneSimulator' ">
     <DebugSymbols>true</DebugSymbols>
