@@ -91,7 +91,7 @@ module App =
             else Application.Current.MainPage.DisplayAlert("Oh no", "Pedometer is not supported", "Ok")
                  |> ignore
         )
-    let update msg model =
+    let update message model =
         Xamarin.Essentials.Preferences.Set("alarm", JsonConvert.SerializeObject model.Alarm)
         let now = DateTime.Now
         let notify frequency (dayOfWeek: DayOfWeek) =
@@ -123,7 +123,7 @@ module App =
         let switchDay condition dayOfWeek updatedAlarm =
             (if condition then cancel else notify model.Alarm.Frequency) dayOfWeek
             { model with Alarm = updatedAlarm }, Cmd.none
-        match msg with
+        match message with
         | PedometerUpdated p -> { model with Pedometer = p }, Cmd.none
         | ScreenSizeUpdated size -> { model with ScreenSize = size }, Cmd.none
         | Reset -> { model with PedometerOffset = model.Pedometer }, Cmd.none
