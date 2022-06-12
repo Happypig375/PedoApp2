@@ -57,6 +57,8 @@ module App =
     | SwitchSaturday
     | MoveKnob of float<R>
     | ReleaseKnob
+    | StartTestNotifications
+    | StopTestNotifications
 
     let knobXCoordinateFromFrequency frequency = float (frequency - 1) * (284R-64R)/2. + 64R
     let knobXCoordinateToFrequency x = round ((x - 64R) / ((284R-64R)/2.) + 1.) |> int
@@ -144,6 +146,22 @@ module App =
             cancelAll()
             notifyAll frequency
             { model with KnobXCoordinate = knobXCoordinateFromFrequency frequency; Alarm = { model.Alarm with Frequency = frequency } }, Cmd.none
+        | StartTestNotifications ->
+            NotificationCenter.Current.Show(
+                NotificationRequest(
+                    Title = "A test notification",
+                    Schedule = NotificationRequestSchedule(
+                        NotifyTime = now.AddSeconds 5.,
+                        RepeatType = NotificationRepeat.TimeInterval,
+                        NotifyRepeatInterval = TimeSpan.FromSeconds 5.
+                    ),
+                    NotificationId = 999
+                )
+            ) |> ignore
+            model, Cmd.none
+        | StopTestNotifications ->
+            NotificationCenter.Current.Cancel 999 |> ignore
+            model, Cmd.none
     let view (model: Model) dispatch =
         let views = Views(dispatch, model.ScreenSize, 360R, 640R)
         [
@@ -172,17 +190,18 @@ module App =
             | Alarm ->
                 views.background_rect 0xffffff
                 views.text "Alarm" 24R 0x645B43 147R (68R+24R)
-                views.background_escape CloseMenu
                 views.background_roundRectFromBottom 0xA9A290 525R 20R
                 views.text "Notification" 24R 0xF2EFE5 55R (160R+24R)
-                views.text "Remain you to have a walk" 14R 0xF2EFE5 55R (189R+17R)
-                views.drawingConstrained 260R 160R 55R 35R [
+                views.text "Remain you to have a walk" 14R 0xF2EFE5 55R (189R+17R) // TODO: Typo
+                views.drawingConstrained 0R 0R 315R 195R [
+                    Draw.group 25R 72R [Draw.path 0x645B43 3R "M19.5 2L3 14L19.5 27"]
                     Draw.roundRect (if model.Alarm.Enabled then 0xA4E3C5 else 0xF2EFE5) Draw.thicknessFill 265R 162R 46R 26R 15R
                     Draw.roundRect
                         (if model.Alarm.Enabled then 0xF3FAF7 else rgba(169, 162, 144, 0.5)) Draw.thicknessFill
                         (if model.Alarm.Enabled then 287R else 267R)
                          164R 22R 22R 11R
                 ]
+                views.buttonInvisible 0R 50R 75R 75R CloseMenu
                 views.buttonInvisible 250R 150R 75R 50R SwitchAlarm
                 if model.Alarm.Enabled then
                     views.background_hRect (rgba(255, 255, 255, 0.2)) 280R 107R
@@ -191,13 +210,13 @@ module App =
                         views.button text 20R (if on then 0xF2EFE5 else 0x848484)
                             (if on then 0x645B43 else 0xF5F3EA) ButtonStyle.Round left 330R 33R 33R msg
                     daySwitch "M" 28R model.Alarm.Monday SwitchMonday
-                    daySwitch "T" 73R model.Alarm.Tuesday SwitchTuesday
+                    // TODO: Tuesday button with left X coordinate 73R. Hint: Ctrl+D to duplicate an entire line
                     daySwitch "W" 118R model.Alarm.Wednesday SwitchWednesday
                     daySwitch "T" 163R model.Alarm.Thursday SwitchThursday
-                    daySwitch "F" 208R model.Alarm.Friday SwitchFriday
+                    // TODO: Friday button with left X coordinate 208R
                     daySwitch "S" 253R model.Alarm.Saturday SwitchSaturday
                     daySwitch "S" 298R model.Alarm.Sunday SwitchSunday
-                    views.text "Number if walk per day" 17R 0xF2EFE5 97R (435R+17R)
+                    views.text "Number if walk per day" 17R 0xF2EFE5 97R (435R+17R) // TODO: Typo
                     views.roundRect 0xF2EFE5 (70R-4.5<R>) (492R-4.5<R>) (225.5<R> + 4.5<R>*2.) (4.5<R>*2.) 4.5<R>
                     views.roundRect 0x645B43 (70R-2R) (492R-2R) (model.KnobXCoordinate - (70R-2R) + 5R) (2R * 2.) 2R
                     views.textBordered $"{knobXCoordinateToFrequency model.KnobXCoordinate}" 15R
@@ -205,11 +224,14 @@ module App =
                     views.touchArea false 55R 470R 275R 50R (fun x _ e ->
                         match e with
                         | Action.Moved ->
-                            x - 22R/2. |> min 284R |> max 64R |> MoveKnob |> dispatch
+                            x - 22R/2. |> min 384R |> max 64R |> MoveKnob |> dispatch // TODO: right limit should be at 284R instead
                         | Action.Released ->
                             dispatch ReleaseKnob
                         | _ -> ()
                     )
+                    views.textCenter "Some Android manufacturers like Xiaomi and Huawei disable non-system\nbackground apps so scheduled notifications are not triggered.\nThere may also be settings for running the app in background to enable.\nTry rebooting after pressing Start Testing." 10R 0xF2EFE5 530R
+                    views.button "Start testing" 10R 0x848484 0xF5F3EA ButtonStyle.Rectangular 50R 590R 120R 30R StartTestNotifications
+                    views.button "Stop testing" 10R 0x848484 0xF5F3EA ButtonStyle.Rectangular 200R 590R 120R 30R StopTestNotifications
         ] |> views._finalize ScreenSizeUpdated
 
     let program =

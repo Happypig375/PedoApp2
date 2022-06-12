@@ -28,9 +28,13 @@ type AppDelegate () =
     override this.FinishedLaunching (app, options) =
         App.PlatformSpecifics.PlatformServices.init ()
         Xamarin.Forms.DependencyService.Register<PedometeriOS>()
+        Plugin.LocalNotification.NotificationCenter.AskPermission()
         let appcore = new App.App()
         this.LoadApplication (appcore)
         base.FinishedLaunching(app, options)
+    override this.WillEnterForeground uiApplication =
+        Plugin.LocalNotification.NotificationCenter.ResetApplicationIconBadgeNumber uiApplication |> ignore
+        base.WillEnterForeground uiApplication
 
 module Main =
     [<EntryPoint>]

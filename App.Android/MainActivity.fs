@@ -34,27 +34,36 @@ type PedometerAndroid() =
     interface App.App.Pedometer with
         member _.IsSupported = sensor <> null
         member _.Step = event.Publish
-[<UsesPermission(Android.Manifest.Permission.ActivityRecognition)>]
+
 [<UsesFeature(Name=Android.Hardware.Sensor.StringTypeStepCounter, Required=true)>]
+[<UsesPermission(Android.Manifest.Permission.ActivityRecognition)>]
 do ()
 
-[<Activity (Label = "App.Android", Icon = "@drawable/icon", Theme = "@style/MainTheme", MainLauncher = true, ConfigurationChanges = (ConfigChanges.ScreenSize ||| ConfigChanges.Orientation))>]
+[<Activity (Label = "App.Android", Icon = "@drawable/icon", Theme = "@style/OverriddenMainTheme", MainLauncher = true, ConfigurationChanges = (ConfigChanges.ScreenSize ||| ConfigChanges.Orientation))>]
 type MainActivity() =
     inherit FormsAppCompatActivity()
-    override this.OnCreate(bundle: Bundle) =
-        FormsAppCompatActivity.TabLayoutResource <- Resources.Layout.Tabbar
-        FormsAppCompatActivity.ToolbarResource <- Resources.Layout.Toolbar
+    let [<Literal>] activityRecognitionRequestCode = -1483743225
+    member this.RequestPedometerPermissionThenStart() =
         if AndroidX.Core.Content.ContextCompat.CheckSelfPermission(this,
             Android.Manifest.Permission.ActivityRecognition) = Permission.Denied then
             //ask for permission
-            this.RequestPermissions([|Android.Manifest.Permission.ActivityRecognition|], 126783)
+            this.RequestPermissions([|Android.Manifest.Permission.ActivityRecognition|], activityRecognitionRequestCode)
+        else
+            Xamarin.Forms.DependencyService.Register<PedometerAndroid>()
+            this.LoadApplication(App())
+            Plugin.LocalNotification.NotificationCenter.NotifyNotificationTapped this.Intent |> ignore
+    override this.OnNewIntent intent =
+        Plugin.LocalNotification.NotificationCenter.NotifyNotificationTapped this.Intent |> ignore
+        base.OnNewIntent intent
+    override this.OnCreate(bundle: Bundle) =
+        FormsAppCompatActivity.TabLayoutResource <- Resources.Layout.Tabbar
+        FormsAppCompatActivity.ToolbarResource <- Resources.Layout.Toolbar
         base.OnCreate (bundle)
         Xamarin.Essentials.Platform.Init(this, bundle)
         App.PlatformSpecifics.PlatformServices.init(this, bundle)
-        Xamarin.Forms.DependencyService.Register<PedometerAndroid>()
-
-        this.LoadApplication(App())
-
-    override this.OnRequestPermissionsResult(requestCode: int, permissions: string[], [<GeneratedEnum>] grantResults: Android.Content.PM.Permission[]) =
+        Plugin.LocalNotification.NotificationCenter.CreateNotificationChannel() |> ignore
+        this.RequestPedometerPermissionThenStart()
+    override this.OnRequestPermissionsResult(requestCode: int, permissions: string[], [<GeneratedEnum>] grantResults: Permission[]) =
         Xamarin.Essentials.Platform.OnRequestPermissionsResult(requestCode, permissions, grantResults)
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults)
+        if requestCode = activityRecognitionRequestCode then this.RequestPedometerPermissionThenStart()
