@@ -16,8 +16,8 @@ module Views =
      static member ($) (_: GenericOneWithTypeOf, _: float<'M>) = LanguagePrimitives.FloatWithMeasure<'M> 1.
      static member ($) (_: GenericOneWithTypeOf, _: decimal<'M>) = LanguagePrimitives.DecimalWithMeasure<'M> 1m
  let inline GenericOneWithTypeOf x = GenericOneWithTypeOf() $ x
- let inline (=~) (x:^a) (y:^a) = abs (x / GenericOneWithTypeOf x - y / GenericOneWithTypeOf y |> float) <= 0.0001
- let rgba(r, g, b, a) = (a * 255. |> int |> (+) 1 <<< 24) + (r <<< 16) + (g <<< 8) + b
+ let inline (=~) (a:^a) (b:^a) = abs (a / GenericOneWithTypeOf a - b / GenericOneWithTypeOf b |> float) <= 0.0001
+ let rgba(red, green, blue, alpha) = (alpha * 255. |> int |> (+) 1 <<< 24) + (red <<< 16) + (green <<< 8) + blue
  let transparent = 0x01000000
  let gray = 0x808080
  let hexToUint32 hex = if hex = transparent then 0 elif hex &&& 0xff000000 = 0 then hex + 0xff000000 else hex
@@ -85,43 +85,43 @@ module Views =
          paint.Style <- if thickness = thicknessFill then SKPaintStyle.Fill else SKPaintStyle.Stroke
          paint.IsAntialias <- true
          paint
-     let translate x y drawing =
-         DrawTransform(SKMatrix.MakeTranslation(skMeasure x, skMeasure y), drawing)
-     let group x y drawings =
-         DrawTransformMulti(SKMatrix.MakeTranslation(skMeasure x, skMeasure y), drawings)
-     let circle colorHex thickness x y r =
+     let translate dx dy drawing =
+         DrawTransform(SKMatrix.MakeTranslation(skMeasure dx, skMeasure dy), drawing)
+     let group dx dy drawings =
+         DrawTransformMulti(SKMatrix.MakeTranslation(skMeasure dx, skMeasure dy), drawings)
+     let circle color thickness left top cornderRadius =
          DrawElement(fun canvas paint ->
-            canvas.DrawCircle(skMeasure (x+r), skMeasure (y+r), skMeasure r, assign colorHex thickness paint))
-     let rect colorHex thickness x y w h =
+            canvas.DrawCircle(skMeasure (left+cornderRadius), skMeasure (top+cornderRadius), skMeasure cornderRadius, assign color thickness paint))
+     let rect color thickness left top width height =
          DrawElement(fun canvas paint ->
-            canvas.DrawRect(skMeasure x, skMeasure y, skMeasure w, skMeasure h, assign colorHex thickness paint))
-     let roundRect colorHex thickness x y w h r =
+            canvas.DrawRect(skMeasure left, skMeasure top, skMeasure width, skMeasure height, assign color thickness paint))
+     let roundRect color thickness left top width height cornerRadius =
          DrawElement(fun canvas paint ->
-            canvas.DrawRoundRect(skMeasure x, skMeasure y, skMeasure w, skMeasure h, skMeasure r, skMeasure r, assign colorHex thickness paint))
-     let polygon colorHex thickness points =
+            canvas.DrawRoundRect(skMeasure left, skMeasure top, skMeasure width, skMeasure height, skMeasure cornerRadius, skMeasure cornerRadius, assign color thickness paint))
+     let polygon color thickness points =
          DrawElement(fun canvas paint ->
             use path = new SKPath()
             path.AddPoly(points)
-            canvas.DrawPath(path, assign colorHex thickness paint))
-     let path colorHex thickness path =
+            canvas.DrawPath(path, assign color thickness paint))
+     let path color thickness path =
          DrawElement(fun canvas paint ->
-            use path = SKPath.ParseSvgPathData path in canvas.DrawPath(path, assign colorHex thickness paint))
+            use path = SKPath.ParseSvgPathData path in canvas.DrawPath(path, assign color thickness paint))
  type [<Struct>] SelectedPickerID<'ID when 'ID : equality> = SelectedPickerID of 'ID | SelectedNoPickers
  type [<NoComparison; NoEquality>] Picker<'ID, 'UpdateDropdown when 'ID : equality> =
     Picker of 'ID * baseButton:('UpdateDropdown -> ViewElement) * dropdown:('UpdateDropdown -> ViewElement list)
 open Views
 /// Views from SVG data
-type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, totalX : float<R>, totalY : float<R>) =
+type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, totalWidth : float<R>, totalHeight : float<R>) =
  // https://github.com/fsprojects/Fabulous/issues/648
  static let mutable _prevWH = -1., -1.
  let screenWidthInDevicePixels, screenHeightInDevicePixels = screenSize
  /// Screen units to layout units ratio 
- let ratio = min (screenWidthInDevicePixels / totalX) (screenHeightInDevicePixels / totalY)
+ let ratio = min (screenWidthInDevicePixels / totalWidth) (screenHeightInDevicePixels / totalHeight)
  // The iPhone 6S sometimes makes views with width/height less than 0.5 device units disappear
  let guardEpsilons n = if 0. < n && n < 0.5 then 0.5 else n
  let boundsXOffset, boundsYOffset =
-    (screenWidthInDevicePixels - totalX * ratio) / 2., (screenHeightInDevicePixels - totalY * ratio) / 2.
- let background_bounds x y w h =
+    (screenWidthInDevicePixels - totalWidth * ratio) / 2., (screenHeightInDevicePixels - totalHeight * ratio) / 2.
+ let background_bounds left top width height =
      let pos posComp offset =
          if posComp =~ 0R then 0. else posComp * ratio + offset
      let size posComp sizeComp offset total =
@@ -130,17 +130,17 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
          + if posComp + sizeComp =~ total then offset else 0.
          |> guardEpsilons
      Rectangle (
-         pos x boundsXOffset,
-         pos y boundsYOffset,
-         size x w boundsXOffset totalX,
-         size y h boundsYOffset totalY)
+         pos left boundsXOffset,
+         pos top boundsYOffset,
+         size left width boundsXOffset totalWidth,
+         size top height boundsYOffset totalHeight)
      |> layoutBounds
- let background_hBounds y h = background_bounds 0R y totalX h
- let background_vBounds x w = background_bounds x 0R w totalY
- let applyBoundsWH x y width height =
-     let rect = Rectangle(x * ratio + boundsXOffset, y * ratio + boundsYOffset, guardEpsilons width, guardEpsilons height)
+ let background_hBounds top height = background_bounds 0R top totalWidth height
+ let background_vBounds left width = background_bounds left 0R width totalHeight
+ let applyBoundsWH left top width height =
+     let rect = Rectangle(left * ratio + boundsXOffset, top * ratio + boundsYOffset, guardEpsilons width, guardEpsilons height)
      layoutBounds rect
- let applyBounds x y width height = applyBoundsWH x y (width * ratio) (height * ratio)
+ let applyBounds left top width height = applyBoundsWH left top (width * ratio) (height * ratio)
  member _.applyBoundsOn = applyBounds
  member _.applyRounded radius (e:ViewElement) =
      View.Frame(content = e, padding = Thickness 0., isClippedToBounds = true, hasShadow = false,
@@ -161,39 +161,39 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
  //          , effects = [Effects.zeroPadding()]) |> applyBounds x y w h
  //        e
  //    ]
- member _.info_totalX = totalX
- member _.info_totalY = totalY
+ member _.info_totalWidth = totalWidth
+ member _.info_totalHeight = totalHeight
  member _.info_isLandscape = screenWidthInDevicePixels > screenHeightInDevicePixels
  member _._finalize updateScreenSize views =
      Seq.toList views
      |> fun l -> View.AbsoluteLayout l
-     |> fun a -> View.ContentPage(a, sizeAllocated = fun (w, h) ->
+     |> fun a -> View.ContentPage(a, sizeAllocated = fun (width, height) ->
             let currWH =
-                if w = 0. || h = 0.
+                if width = 0. || height = 0.
                 then PlatformServices.Instance.ScreenDimensions
-                else (w, h - PlatformServices.Instance.HeightDecrease)
+                else (width, height - PlatformServices.Instance.HeightDecrease)
             if _prevWH = currWH then ValueNone
             else _prevWH <- currWH
                  ValueSome <| updateScreenSize currWH
             |> ValueOption.iter dispatch
       )
- member _.background_hRect hex y h = View.BoxView(backgroundColor = colorHex hex) |> background_hBounds y h
- member _.background_vRect hex x w = View.BoxView(backgroundColor = colorHex hex) |> background_vBounds x w
- member _.background_oRect hex x y w h = View.BoxView(backgroundColor = colorHex hex) |> background_bounds x y w h
- member t.background_roundRectFromTop hex h r = t.merge [
-    View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (r * ratio)) |> background_hBounds 0R h
-    View.BoxView(backgroundColor = colorHex hex) |> background_hBounds 0R r
+ member _.background_hRect hex top height = View.BoxView(backgroundColor = colorHex hex) |> background_hBounds top height
+ member _.background_vRect hex left width = View.BoxView(backgroundColor = colorHex hex) |> background_vBounds left width
+ member _.background_oRect hex left top width height = View.BoxView(backgroundColor = colorHex hex) |> background_bounds left top width height
+ member t.background_roundRectFromTop color height cornerRadius = t.merge [
+    View.BoxView(backgroundColor = colorHex color, cornerRadius = CornerRadius (cornerRadius * ratio)) |> background_hBounds 0R height
+    View.BoxView(backgroundColor = colorHex color) |> background_hBounds 0R cornerRadius
  ]
- member t.background_roundRectFromBottom hex h r = t.merge [
-    View.BoxView(backgroundColor = colorHex hex, cornerRadius = CornerRadius (r * ratio)) |> background_hBounds (totalY - h) h
-    View.BoxView(backgroundColor = colorHex hex) |> background_hBounds (totalY - r) r
+ member t.background_roundRectFromBottom color height cornerRadius = t.merge [
+    View.BoxView(backgroundColor = colorHex color, cornerRadius = CornerRadius (cornerRadius * ratio)) |> background_hBounds (totalHeight - height) height
+    View.BoxView(backgroundColor = colorHex color) |> background_hBounds (totalHeight - cornerRadius) cornerRadius
  ]
- member t.background_rect hex = t.background_oRect hex 0R 0R totalX totalY
- member t.background_hLine hex thickness y = t.background_hRect hex (y - thickness / 2.) thickness
- member t.background_hLineFromLeft hex thickness x y = t.background_oRect hex 0R (y - thickness / 2.) x thickness
- member t.background_hLineFromRight hex thickness x y = t.background_oRect hex x (y - thickness / 2.) (totalX-x) thickness
- member _.background_hImage (source:ImageSource) y h = View.Image(Image.ImageSource source) |> background_hBounds y h
- member _.background_button text fontSize textColor backColor style left top w h msg =
+ member t.background_rect color = t.background_oRect color 0R 0R totalWidth totalHeight
+ member t.background_hLine color thickness centerY = t.background_hRect color (centerY - thickness / 2.) thickness
+ member t.background_hLineFromLeft color thickness right centerY = t.background_oRect color 0R (centerY - thickness / 2.) right thickness
+ member t.background_hLineFromRight color thickness left centerY = t.background_oRect color left (centerY - thickness / 2.) (totalWidth-left) thickness
+ member _.background_hImage (source:ImageSource) top height = View.Image(Image.ImageSource source) |> background_hBounds top height
+ member _.background_button text fontSize textColor backColor style left top width height msg =
      View.Button(text, fun () -> dispatch msg
        , textColor = colorHex textColor, fontSize = FontSize.Size (fontSize * ratio), padding = Thickness 0.,
          backgroundColor = colorHex backColor, borderWidth = 0., borderColor = Color.Transparent,
@@ -201,35 +201,35 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
                           | Round | RoundRadius _ | Rectangular | RectangularLeft -> FontAttributes.None
                           | RoundBold | RectangularBold -> FontAttributes.Bold
        , cornerRadius = match style with
-                        | Round | RoundBold -> min w h / 2. * ratio |> int
+                        | Round | RoundBold -> min width height / 2. * ratio |> int
                         | RoundRadius r -> r * ratio |> int
                         | Rectangular | RectangularBold | RectangularLeft -> 0
        , effects = [Effects.zeroPadding])
-       |> background_bounds left top w h
+       |> background_bounds left top width height
  member _.background_escape msg = // e.g. to close current dropdown
      View.ContentView(gestureRecognizers = [
          View.TapGestureRecognizer(fun () -> dispatch msg)
-     ]) |> background_bounds 0R 0R totalX totalY
+     ]) |> background_bounds 0R 0R totalWidth totalHeight
  
  member _.group dx dy = List.map (applyBoundsMap (fun x -> Rectangle(x.X + dx * ratio, x.Y + dy * ratio, x.Width, x.Height)))
- member _.text text fz hexColor x y =
-     View.Label(text, textColor = colorHex hexColor, fontSize = FontSize.Size (fz * ratio))
-     |> applyBoundsWH x (y - fz) AbsoluteLayout.AutoSize AbsoluteLayout.AutoSize
- member _.textCenterSpan text fz hexColor x y right =
-     View.Label(text, horizontalTextAlignment = TextAlignment.Center, textColor = colorHex hexColor, fontSize = FontSize.Size (fz * ratio))
-     |> applyBoundsWH x (y - fz) ((right-x)*ratio) AbsoluteLayout.AutoSize
- member _.textRightSpan text fz hexColor x y right =
-     View.Label(text, horizontalTextAlignment = TextAlignment.End, textColor = colorHex hexColor, fontSize = FontSize.Size (fz * ratio))
-     |> applyBoundsWH x (y - fz) ((right-x)*ratio) AbsoluteLayout.AutoSize
- member _.textCenterRect text fz hexColor x y w h =
-     View.Label(text, horizontalTextAlignment = TextAlignment.Center, verticalTextAlignment = TextAlignment.Center, textColor = colorHex hexColor,
-         fontSize = FontSize.Size (fz * ratio)) |> applyBounds x y w h
- member _.textCenterMargin text fz hexColor hMargin y =
-     View.Label(text, horizontalTextAlignment = TextAlignment.Center, textColor = colorHex hexColor, fontSize = FontSize.Size (fz * ratio))
-     |> applyBoundsWH hMargin (y - fz) ((totalX - hMargin * 2.) * ratio) AbsoluteLayout.AutoSize
- member t.textCenter text fz hexColor y = t.textCenterMargin text fz hexColor 0R y
- member t.textScroll text fz hexColor x y w h = View.ScrollView(t.textCenter text fz hexColor 0R) |> applyBounds x y w h
- member _.textEdit keyboard text fontSize textColor placeholder placeholderColor x y right textChanged =
+ member _.text text fontSize color left baselineY =
+     View.Label(text, textColor = colorHex color, fontSize = FontSize.Size (fontSize * ratio))
+     |> applyBoundsWH left (baselineY - fontSize) AbsoluteLayout.AutoSize AbsoluteLayout.AutoSize
+ member _.textCenterSpan text fontSize color left baselineY right =
+     View.Label(text, horizontalTextAlignment = TextAlignment.Center, textColor = colorHex color, fontSize = FontSize.Size (fontSize * ratio))
+     |> applyBoundsWH left (baselineY - fontSize) ((right-left)*ratio) AbsoluteLayout.AutoSize
+ member _.textRightSpan text fontSize color left baselineY right =
+     View.Label(text, horizontalTextAlignment = TextAlignment.End, textColor = colorHex color, fontSize = FontSize.Size (fontSize * ratio))
+     |> applyBoundsWH left (baselineY - fontSize) ((right-left)*ratio) AbsoluteLayout.AutoSize
+ member _.textCenterRect text fontSize color left top width height =
+     View.Label(text, horizontalTextAlignment = TextAlignment.Center, verticalTextAlignment = TextAlignment.Center, textColor = colorHex color,
+         fontSize = FontSize.Size (fontSize * ratio)) |> applyBounds left top width height
+ member _.textCenterMargin text fontSize color hMargin baselineY =
+     View.Label(text, horizontalTextAlignment = TextAlignment.Center, textColor = colorHex color, fontSize = FontSize.Size (fontSize * ratio))
+     |> applyBoundsWH hMargin (baselineY - fontSize) ((totalWidth - hMargin * 2.) * ratio) AbsoluteLayout.AutoSize
+ member t.textCenter text fontSize color baselineY = t.textCenterMargin text fontSize color 0R baselineY
+ member t.textScroll text fontSize color left top width height = View.ScrollView(t.textCenter text fontSize color 0R) |> applyBounds left top width height
+ member _.textEdit keyboard text fontSize textColor placeholder placeholderColor left baselineY right textChanged =
      let keyboard, isPassword =
          match keyboard:Keyboard with
          | :? Internals.CustomKeyboard as custom when custom.Flags = passwordKeyboardFlags -> Keyboard.Default, true
@@ -238,37 +238,37 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
          placeholder = placeholder, placeholderColor = colorHex placeholderColor, backgroundColor = colorHex transparent,
          isPassword = isPassword, textChanged = fun args -> args.NewTextValue |> textChanged |> dispatch
        , effects = [Effects.borderless]
-     ) |> applyBounds (x - 1R) (y - fontSize - 4R) (right - x + 1R) (fontSize + 11R)
- member t.textEditCenter keyboard text fontSize textColor placeholder placeholderColor left top w h textChanged =
+     ) |> applyBounds (left - 1R) (baselineY - fontSize - 4R) (right - left + 1R) (fontSize + 11R)
+ member t.textEditCenter keyboard text fontSize textColor placeholder placeholderColor left top width height textChanged =
      t.textEdit keyboard text fontSize textColor placeholder placeholderColor 0R 0R 0R textChanged
      |> horizontalTextAlignment TextAlignment.Center
      |> verticalTextAlignment TextAlignment.Center
      |> applyEffect Effects.xf7538_AndroidEntryCenterAlign
-     |> applyBounds left top w h
- member _.rect color x y w h = View.BoxView(backgroundColor = colorHex color) |> applyBounds x y w h
- member _.roundRect color x y w h r = View.BoxView(backgroundColor = colorHex color, cornerRadius = CornerRadius (r * ratio)) |> applyBounds (x) y w h
- member _.shadow color x y w h =
+     |> applyBounds left top width height
+ member _.rect color left top width height = View.BoxView(backgroundColor = colorHex color) |> applyBounds left top width height
+ member _.roundRect color left top width height cornerRadius = View.BoxView(backgroundColor = colorHex color, cornerRadius = CornerRadius (cornerRadius * ratio)) |> applyBounds (left) top width height
+ member _.shadow color left top width height =
      let shadowThickness = 10R
      View.Frame(hasShadow = true, backgroundColor = colorHex color, margin = Thickness (shadowThickness * ratio))
-     |> applyBounds (x - shadowThickness) (y - shadowThickness) (w + shadowThickness * 2.) (h + shadowThickness * 2.)
- member t.roundShadow color x y w h r = t.shadow color x y w h |> frameCornerRadius (r * ratio)
+     |> applyBounds (left - shadowThickness) (top - shadowThickness) (width + shadowThickness * 2.) (height + shadowThickness * 2.)
+ member t.roundShadow color left top width height cornderRadius = t.shadow color left top width height |> frameCornerRadius (cornderRadius * ratio)
  /// x2 in svg = width here
- member _.hLine hex thickness x y w = View.BoxView(backgroundColor = colorHex hex) |> applyBounds x (y-thickness / 2.) w thickness 
+ member _.hLine hex thickness left centerY width = View.BoxView(backgroundColor = colorHex hex) |> applyBounds left (centerY-thickness / 2.) width thickness 
  // Use loadingPlaceholder to counter previous image still being present after Fabulous reuses the image view: empty.png is a 1×1 image containing one transparent pixel
- member _.image x y w h file =
-     View.CachedImage(source = Image.ImageSource file, aspect = Aspect.AspectFit, loadingPlaceholder = Image.ImageSource Images.``empty.png``) |> applyBounds x y w h
- member t.imageAround midX midY w h = t.image (midX - w / 2.) (midY - h / 2.) w h
- member _.imageFill x y w h (file:ImageSource) =
-     View.CachedImage(source = Image.ImageSource file, aspect = Aspect.AspectFill, loadingPlaceholder = Image.ImageSource Images.``empty.png``) |> applyBounds x y w h
- member _.buttonInvisible left top w h msg = 
+ member _.image left top width height file =
+     View.CachedImage(source = Image.ImageSource file, aspect = Aspect.AspectFit, loadingPlaceholder = Image.ImageSource Images.``empty.png``) |> applyBounds left top width height
+ member t.imageAround centerX centerY width height = t.image (centerX - width / 2.) (centerY - height / 2.) width height
+ member _.imageFill left top width height (file:ImageSource) =
+     View.CachedImage(source = Image.ImageSource file, aspect = Aspect.AspectFill, loadingPlaceholder = Image.ImageSource Images.``empty.png``) |> applyBounds left top width height
+ member _.buttonInvisible left top width height msg = 
      View.Button("", fun () -> dispatch msg
        , padding = Thickness 0., backgroundColor = Color.Transparent, borderColor = Color.Transparent,
        effects = [Effects.zeroPadding])
-       |> applyBounds left top w h
- member _.buttonInvisibleMultiPress pressCount left top w h msg = 
+       |> applyBounds left top width height
+ member _.buttonInvisibleMultiPress pressCount left top width height msg = 
      View.ContentView(gestureRecognizers = [View.TapGestureRecognizer(numberOfTapsRequired = pressCount, command = fun () -> dispatch msg)])
-     |> applyBounds left top w h
- member _.buttonMultiMsg text fontSize textColor backColor style left top w h msgs =
+     |> applyBounds left top width height
+ member _.buttonMultiMsg text fontSize textColor backColor style left top width height msgs =
      View.Button(text, fun () -> Seq.iter dispatch msgs
        , textColor = colorHex textColor, fontSize = FontSize.Size (fontSize * ratio), padding = Thickness 0.,
          backgroundColor = colorHex backColor, borderWidth = 0., borderColor = Color.Transparent,
@@ -276,30 +276,30 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
                           | Round | RoundRadius _ | Rectangular | RectangularLeft -> FontAttributes.None
                           | RoundBold | RectangularBold -> FontAttributes.Bold
        , cornerRadius = match style with
-                        | Round | RoundBold -> min w h / 2. * ratio |> int
+                        | Round | RoundBold -> min width height / 2. * ratio |> int
                         | RoundRadius r -> r * ratio |> int
                         | Rectangular | RectangularBold | RectangularLeft -> 0
        , effects = [Effects.zeroPadding])
-       |> applyBounds left top w h
- member t.button text fontSize textColor backColor style left top w h msg =
-     t.buttonMultiMsg text fontSize textColor backColor style left top w h [msg]
- member t.buttonBordered text fontSize textColor backColor borderColor borderThickness style left top w h msg =
-     t.button text fontSize textColor backColor style left top w h msg
+       |> applyBounds left top width height
+ member t.button text fontSize textColor backColor style left top width height msg =
+     t.buttonMultiMsg text fontSize textColor backColor style left top width height [msg]
+ member t.buttonBordered text fontSize textColor backColor borderColor borderThickness style left top width height msg =
+     t.button text fontSize textColor backColor style left top width height msg
      |> ViewElementExtensions.borderColor (colorHex borderColor) |> borderWidth (borderThickness * ratio)
- member t.textBordered text fontSize textColor backColor borderColor borderThickness style left top w h =
+ member t.textBordered text fontSize textColor backColor borderColor borderThickness style left top width height =
      t.buttonBordered text fontSize textColor backColor
-         borderColor borderThickness style left top w h Unchecked.defaultof<_>
+         borderColor borderThickness style left top width height Unchecked.defaultof<_>
      |> applyReplace ViewAttributes.CommandAttribKey (fun _ () -> ())
      |> isTabStop false
- member t.imageButton x y w h msg (padding:float<_>) (file:ImageSource) = [
-     t.image (x+padding) (y+padding) (w-padding*2.) (h-padding*2.) file
-     t.buttonInvisible x y w h msg
+ member t.imageButton left top width height msg (padding:float<_>) (file:ImageSource) = [
+     t.image (left+padding) (top+padding) (width-padding*2.) (height-padding*2.) file
+     t.buttonInvisible left top width height msg
  ]
- member t.circle color left top r = t.roundRect color left top (r*2.) (r*2.) r
- member t.circleBordered backColor borderColor borderThickness left top (r:float<_>) =
-     t.textBordered "" 0R transparent backColor borderColor borderThickness Round left top (r*2.) (r*2.)
- member _.activityIndicator hexColor x y w h =
-     View.ActivityIndicator(true, color = colorHex hexColor) |> applyBounds x y w h
+ member t.circle color left top cornderRadius = t.roundRect color left top (cornderRadius*2.) (cornderRadius*2.) cornderRadius
+ member t.circleBordered backColor borderColor borderThickness left top (cornerRadius:float<_>) =
+     t.textBordered "" 0R transparent backColor borderColor borderThickness Round left top (cornerRadius*2.) (cornerRadius*2.)
+ member _.activityIndicator color left top width height =
+     View.ActivityIndicator(true, color = colorHex color) |> applyBounds left top width height
  member private _.listMapTemplate template templateLeft templateTop templateRight templateBottom templateArg =
      template templateArg
      |> Option.map (fun views ->
@@ -309,7 +309,7 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
                              rect.Width, rect.Height))) |> List.ofSeq,
              width = (templateRight - templateLeft) * ratio,
              height = (templateBottom - templateTop) * ratio))
- member private _.listTemplate listStyle x y w h scrollTo updateScrollTo items =
+ member private _.listTemplate listStyle left top width height scrollTo updateScrollTo items =
      ignore (updateScrollTo : 'b -> 'a)
      ignore (scrollTo : 'b)
      View.CollectionView(items,
@@ -321,33 +321,34 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
          // , created = fun c ->
          //     if Xamarin.Essentials.DeviceInfo.Platform <> Xamarin.Essentials.DevicePlatform.UWP
          //     then c.ScrollTo(scrollTo, -1, ScrollToPosition.MakeVisible, false)
-     ) |> applyBounds x y w h
+     ) |> applyBounds left top width height
  /// Temporary implementation of list using ScrollView instead of CollectionView,
  /// used to evade https://github.com/fsprojects/Fabulous/issues/609
  member t.listGrouped_ listType (groupHeaderTemplateLeft, groupHeaderTemplateTop,
                                      groupHeaderTemplateRight, groupHeaderTemplateBottom, groupHeaderTemplate)
          (itemTemplateLeft, itemTemplateTop, itemTemplateRight, itemTemplateBottom, itemTemplate)
-         x y w h scrollTo updateScrollTo source =
+         left top width height scrollTo updateScrollTo source =
      View.ScrollView (
          View.AbsoluteLayout (
              dependsOn
                  (source, groupHeaderTemplateLeft, groupHeaderTemplateTop, groupHeaderTemplateRight, groupHeaderTemplateBottom, groupHeaderTemplate,
                   itemTemplateLeft, itemTemplateTop, itemTemplateRight, itemTemplateBottom, itemTemplate)
                  <| fun _ _ ->
-             Seq.fold (fun (acc, y) (groupHeader, items) ->
+             Seq.fold (fun (acc, leftOrTop (* left of top of group header *)) (groupHeader, items) ->
                  let groupHeader =
                      t.listMapTemplate groupHeaderTemplate groupHeaderTemplateLeft
                          groupHeaderTemplateTop groupHeaderTemplateRight groupHeaderTemplateBottom groupHeader
                      |> Option.map (
                         applyBounds
-                            (-boundsXOffset/ratio + match listType with Horizontal -> y | Vertical -> 0R)
-                            (-boundsYOffset/ratio + match listType with Vertical -> y | Horizontal -> 0R)
+                            (-boundsXOffset/ratio + match listType with Horizontal -> leftOrTop | Vertical -> 0R)
+                            (-boundsYOffset/ratio + match listType with Vertical -> leftOrTop | Horizontal -> 0R)
                             (groupHeaderTemplateRight - groupHeaderTemplateLeft) (groupHeaderTemplateBottom-groupHeaderTemplateTop))
-                 let y = match groupHeader, listType with
-                         | Some _, Vertical -> y + groupHeaderTemplateBottom - groupHeaderTemplateTop
-                         | Some _, Horizontal -> y + groupHeaderTemplateRight - groupHeaderTemplateLeft
-                         | None, _ -> y
-                 let items, y =
+                 let leftOrTop = // left or top of initial item, after group header
+                    match groupHeader, listType with
+                        | Some _, Vertical -> leftOrTop + groupHeaderTemplateBottom - groupHeaderTemplateTop
+                        | Some _, Horizontal -> leftOrTop + groupHeaderTemplateRight - groupHeaderTemplateLeft
+                        | None, _ -> leftOrTop
+                 let items, leftOrTop = // left or top of next group header
                      Seq.fold (fun (acc, y) curr ->
                          let item =
                              t.listMapTemplate (itemTemplate groupHeader) itemTemplateLeft
@@ -363,52 +364,52 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
                          | Some _, Vertical -> y + itemTemplateBottom - itemTemplateTop
                          | Some _, Horizontal -> y + itemTemplateRight - itemTemplateLeft
                          | None, _ -> y
-                      ) (Seq.empty, y) items
+                      ) (Seq.empty, leftOrTop) items
                  seq {
                      yield! acc
                      match groupHeader with
                      | Some x -> x
                      | None -> ()
                      yield! items
-                 }, y
+                 }, leftOrTop
              ) (Seq.empty, 0R) source
              |> fst
              |> Seq.toList
          ), orientation = match listType with Horizontal -> ScrollOrientation.Horizontal | Vertical -> ScrollOrientation.Vertical
      , scrollTo = match listType with Horizontal -> scrollTo, 0., NotAnimated | Vertical -> 0., scrollTo, NotAnimated
-     , scrolled = fun e -> (match listType with Horizontal -> e.ScrollX | Vertical -> e.ScrollY) |> updateScrollTo |> dispatch) |> applyBounds x y w h
+     , scrolled = fun e -> (match listType with Horizontal -> e.ScrollX | Vertical -> e.ScrollY) |> updateScrollTo |> dispatch) |> applyBounds left top width height
  member t.list_ listType (itemTemplateLeft, itemTemplateTop, itemTemplateRight, itemTemplateBottom, itemTemplate)
-     x y w h scrollTo updateScrollTo source =
+     left top width height scrollTo updateScrollTo source =
      t.listGrouped_ listType (0R, 0R, 0R, 0R, fun () -> None)
          (itemTemplateLeft, itemTemplateTop, itemTemplateRight, itemTemplateBottom, fun _ -> itemTemplate)
-         x y w h scrollTo updateScrollTo [(), source]
+         left top width height scrollTo updateScrollTo [(), source]
  member t.listGrouped
      listStyle (groupHeaderTemplateLeft, groupHeaderTemplateTop,
                 groupHeaderTemplateRight, groupHeaderTemplateBottom, groupHeaderTemplate)
      (itemTemplateLeft, itemTemplateTop, itemTemplateRight, itemTemplateBottom, itemTemplate)
-     x y w h scrollTo updateScrollTo source =
-     t.listTemplate listStyle x y w h scrollTo updateScrollTo [
+     left top width height scrollTo updateScrollTo source =
+     t.listTemplate listStyle left top width height scrollTo updateScrollTo [
          for groupHeader, items in source do
              match t.listMapTemplate groupHeaderTemplate groupHeaderTemplateLeft
                  groupHeaderTemplateTop groupHeaderTemplateRight groupHeaderTemplateBottom groupHeader with
-             | Some x -> x | None -> ()
+             | Some groupHeaderView -> groupHeaderView | None -> ()
              for item in items do
                  match t.listMapTemplate (itemTemplate groupHeader) itemTemplateLeft
                      itemTemplateTop itemTemplateRight itemTemplateBottom item with
-                 | Some x -> x (*|> ViewElementExtensions.backgroundColor Color.Green*) | None -> ()
+                 | Some itemView -> itemView (*|> ViewElementExtensions.backgroundColor Color.Green*) | None -> ()
      ]
  member t.list listStyle
      (itemTemplateLeft, itemTemplateTop, itemTemplateRight, itemTemplateBottom, itemTemplate)
-     x y w h scrollTo updateScrollTo source =
+     left top width height scrollTo updateScrollTo source =
      t.listMapTemplate itemTemplate itemTemplateLeft itemTemplateTop itemTemplateRight itemTemplateBottom
      |> Seq.choose <| source
      |> List.ofSeq
-     |> t.listTemplate listStyle x y w h scrollTo updateScrollTo
+     |> t.listTemplate listStyle left top width height scrollTo updateScrollTo
  member t.radioButtons whetherToHighlight unselectedFormatter unselectedFontSize unselectedTextColor
     unselectedBackColor unselectedBorderColor unselectedBorderThickness unselectedStyle
     selectedFormatter selectedFontSize selectedTextColor
     selectedBackColor selectedBorderColor selectedBorderThickness selectedStyle
-    leftGenerator topGenerator w h (source:'Item seq) (item:'Item) updateItem =
+    leftGenerator topGenerator width height (source:'Item seq) (item:'Item) updateItem =
     source |> Seq.mapi (fun i sourceItem ->
         (if whetherToHighlight (sourceItem, item) then
             t.buttonBordered (selectedFormatter sourceItem) selectedFontSize selectedTextColor
@@ -416,7 +417,7 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
          else
             t.buttonBordered (unselectedFormatter sourceItem) unselectedFontSize unselectedTextColor
                unselectedBackColor unselectedBorderColor unselectedBorderThickness unselectedStyle
-        ) (leftGenerator i) (topGenerator i) w h (updateItem sourceItem))
+        ) (leftGenerator i) (topGenerator i) width height (updateItem sourceItem))
  member _.conditional_fabulous454workaround conditional ifTrue ifFalse =
     let workaround conditional = // fixes AQ0088, AQ0089, AQ0107
         if conditional then id else applyBoundsMap (fun _ -> Rectangle(-1., -1., 1., 1.))
@@ -517,20 +518,20 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
         ]
      |}
  static member val private touchAreaLocalInteractionIds = Collections.Generic.HashSet()
- member _.touchArea capturePassthroughInteractions x y w h handler =
+ member _.touchArea capturePassthroughInteractions left top width height handler =
     View.SKCanvasView(enableTouchEvents = true, touch = fun e ->
         e.Handled <- true
         if e.ActionType = Forms.SKTouchAction.Pressed then Views<_>.touchAreaLocalInteractionIds.Add e.Id |> ignore
         if (e.InContact || e.ActionType = Forms.SKTouchAction.Released)
            && (capturePassthroughInteractions || Views<_>.touchAreaLocalInteractionIds.Contains e.Id) then
             let density = Xamarin.Essentials.DeviceDisplay.MainDisplayInfo.Density
-            handler (float e.Location.X / density / ratio + x)
-                    (float e.Location.Y / density / ratio + y) e.ActionType
+            handler (float e.Location.X / density / ratio + left)
+                    (float e.Location.Y / density / ratio + top) e.ActionType
         match e.ActionType with
         | Forms.SKTouchAction.Released | Forms.SKTouchAction.Cancelled ->
             Views<_>.touchAreaLocalInteractionIds.Remove e.Id |> ignore
         | _ -> ()
-    ) |> applyBounds x y w h
+    ) |> applyBounds left top width height
  member _.clipRect views =
      List.fold (fun rect (view:ViewElement) ->
          match rect, view.TryGetAttributeKeyed ViewAttributes.LayoutBoundsAttribKey with
@@ -546,28 +547,28 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
      t.combine (-rect.Location.X, -rect.Location.Y) views
      |> layoutBounds rect
  /// background does NOT support transparency
- member t.roundClip border thickness background views =
+ member t.roundClip border thickness backgroundColor views =
      let rect = t.clipRect views
      View.Frame(content = View.Frame
         (content = t.combine (-rect.Location.X - thickness * ratio, -rect.Location.Y - thickness * ratio) views,
-         backgroundColor = colorHex background, isClippedToBounds = true,
+         backgroundColor = colorHex backgroundColor, isClippedToBounds = true,
          padding = Thickness 0., cornerRadius = min rect.Width rect.Height / 2. - thickness * ratio),
  
          backgroundColor = colorHex border, isClippedToBounds = true,
          padding = Thickness (thickness * ratio, thickness * ratio, thickness * ratio * 2., thickness * ratio),
          cornerRadius = min rect.Width rect.Height / 2.)
      |> layoutBounds rect
- member _.drawingConstrained x y w h drawings =
+ member _.drawingConstrained left top width height drawings =
      if Seq.isEmpty drawings then View.ContentView() // Don't waste resources...
      else
          let skMeasure (n:float<R>) = float32 n
          View.SKCanvasView(invalidate = true, paintSurface = fun args ->
              let canvas = args.Surface.Canvas
              canvas.Clear()
-             min (float canvas.DeviceClipBounds.Width / w) (float canvas.DeviceClipBounds.Height / h)
+             min (float canvas.DeviceClipBounds.Width / width) (float canvas.DeviceClipBounds.Height / height)
              |> float32
              |> canvas.Scale
-             canvas.Translate(-skMeasure x, -skMeasure y)
+             canvas.Translate(-skMeasure left, -skMeasure top)
              use paint = new SKPaint()
              let rec draw =
                  function
@@ -586,5 +587,5 @@ type Views<'Message>(dispatch : 'Message -> unit, screenSize: float * float, tot
                  | DrawElement drawer ->
                      drawer canvas paint
              Seq.iter draw drawings // Cover first with last
-       ) |> applyBounds x y w h
- member t.drawing drawings = t.drawingConstrained 0R 0R totalX totalY drawings
+       ) |> applyBounds left top width height
+ member t.drawing drawings = t.drawingConstrained 0R 0R totalWidth totalHeight drawings
