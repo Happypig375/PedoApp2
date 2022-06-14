@@ -205,7 +205,7 @@ module App =
                 views.buttonInvisible 250R 150R 75R 0R SwitchAlarm // TODO: Set the height to 50R
                 if model.Alarm.Enabled then
                     views.background_hRect (rgba(255, 255, 255, 0.2)) 280R 107R
-                    views.text "Repeat every" 17R 0xF2EFE5 122R (291R+17R)
+                    views.textCenter "Repeat every" 17R 0xF2EFE5 (291R+17R)
                     let daySwitch (text: string) (left: float<R>) (on: bool) (message: Message) =
                         views.button text 20R (if on then 0xF2EFE5 else 0x848484)
                             (if on then 0x645B43 else 0xF5F3EA) ButtonStyle.Round left 330R 33R 33R message
@@ -216,7 +216,7 @@ module App =
                     // TODO: Friday button with left X coordinate 208R
                     daySwitch "S" 253R model.Alarm.Saturday SwitchSaturday
                     daySwitch "S" 298R model.Alarm.Sunday SwitchSunday
-                    views.text "Number if walk per day" 17R 0xF2EFE5 97R (435R+17R) // TODO: Typo
+                    views.textCenter "Number if walk per day" 17R 0xF2EFE5 (435R+17R) // TODO: Typo
                     views.roundRect 0xF2EFE5 (70R-4.5<R>) (492R-4.5<R>) (225.5<R> + 4.5<R>*2.) (4.5<R>*2.) 4.5<R>
                     views.roundRect 0x645B43 (70R-2R) (492R-2R) (model.KnobXCoordinate - (70R-2R) + 5R) (2R * 2.) 2R
                     views.textBordered $"{knobXCoordinateToFrequency model.KnobXCoordinate}" 15R

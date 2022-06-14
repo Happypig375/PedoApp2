@@ -23,9 +23,9 @@
     <AndroidLinkMode>None</AndroidLinkMode>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
-    <SelectedDevice>android_tv_1080p_-_api_30</SelectedDevice>
-    <SelectedPlatformGroup>Emulator</SelectedPlatformGroup>
-    <ActiveDebugProfile>android_tv_1080p_-_api_30</ActiveDebugProfile>
+    <SelectedDevice>Xiaomi Redmi Note 9 Pro</SelectedDevice>
+    <SelectedPlatformGroup>PhysicalDevice</SelectedPlatformGroup>
+    <ActiveDebugProfile>Xiaomi Redmi Note 9 Pro</ActiveDebugProfile>
     <DefaultDevice>android_tv_1080p_-_api_30</DefaultDevice>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
