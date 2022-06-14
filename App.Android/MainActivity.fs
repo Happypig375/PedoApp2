@@ -37,7 +37,6 @@ type PedometerAndroid() =
 
 [<UsesFeature(Name = Android.Hardware.Sensor.StringTypeStepCounter, Required = true)>]
 [<UsesPermission(Android.Manifest.Permission.ActivityRecognition)>]
-[<Application(Label = "Custom Pedometer")>]
 do ()
 
 [<Activity (Icon = "@drawable/icon", Theme = "@style/OverriddenMainTheme", MainLauncher = true, ConfigurationChanges = (ConfigChanges.ScreenSize ||| ConfigChanges.Orientation))>]
