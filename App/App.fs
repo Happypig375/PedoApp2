@@ -175,7 +175,7 @@ module App =
                 ]
                 views.buttonInvisible 0R 50R 80R 60R OpenMenu
                 views.text "Pedometer" 24R 0xffffff 119R (68R+24R)
-                views.textCenterRect $"{model.Pedometer - model.PedometerOffset}" 55R 0x000000 0R 220R 360R 62R
+                views.textCenter $"{model.Pedometer - model.PedometerOffset}" 55R 0x000000 (220R+55R)
                 views.text "Step" 20R 0x000000 158R (299R+20R)
                 views.button "Reset" 13R 0xffffff 0x645B43 ButtonStyle.Round 144R 499R 72R 21R Reset
                 if model.Page = Menu then
@@ -191,7 +191,7 @@ module App =
                 views.background_rect 0xffffff
                 views.text "Alarm" 94R 0x645B43 147R (68R+24R) // TODO: Font size should be 24R
                 views.background_roundRectFromBottom 0xA9A290 525R 20R
-                views.text "Notification" 24R 0xF2EFE5 55R (160R+24R)
+                views.text "Notification" 24R 0xF2EFE5 55R (160R+24R) // TODO: Make the noun plural (i.e. add "s")
                 views.text "Remain you to have a walk" 14R 0xF2EFE5 55R (189R+17R) // TODO: Typo
                 views.drawingConstrained 0R 0R 315R 195R [
                     Draw.group 25R 72R [Draw.path 0x645B43 3R "M19.5 2L3 14L19.5 27"]
