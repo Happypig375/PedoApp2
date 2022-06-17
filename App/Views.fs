@@ -18,6 +18,7 @@ module Views =
  let inline GenericOneWithTypeOf x = GenericOneWithTypeOf() $ x
  let inline (=~) (a:^a) (b:^a) = abs (a / GenericOneWithTypeOf a - b / GenericOneWithTypeOf b |> float) <= 0.0001
  let rgba(red, green, blue, alpha) = (alpha * 255. |> int |> (+) 1 <<< 24) + (red <<< 16) + (green <<< 8) + blue
+ let withOpacity opacity baseColor = (opacity * 255. |> int |> (+) 1 <<< 24) + baseColor
  let transparent = 0x01000000
  let gray = 0x808080
  let hexToUint32 hex = if hex = transparent then 0 elif hex &&& 0xff000000 = 0 then hex + 0xff000000 else hex

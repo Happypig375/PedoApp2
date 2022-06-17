@@ -189,7 +189,7 @@ module App =
                     views.background_button "Alarm" 16R 0xF2EFE5 0xB8B2A2 ButtonStyle.Rectangular 0R 119R 197R 53R OpenAlarm
             | Alarm ->
                 views.background_rect 0xffffff
-                views.text "Alarm" 94R 0x645B43 147R (68R+24R) // TODO: Font size should be 24R
+                views.text "Alarm" 94R 0x645B43 147R (68R+24R) // TODO: Font size should be 24R (Hint: hover over "text" to see which one is the font size)
                 views.background_roundRectFromBottom 0xA9A290 525R 20R
                 views.text "Notification" 24R 0xF2EFE5 55R (160R+24R) // TODO: Make the noun plural (i.e. add "s")
                 views.text "Remain you to have a walk" 14R 0xF2EFE5 55R (189R+17R) // TODO: Typo
