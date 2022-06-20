@@ -43,15 +43,10 @@ do ()
 type MainActivity() =
     inherit FormsAppCompatActivity()
     let [<Literal>] activityRecognitionRequestCode = 1483743225
-    member this.RequestPedometerPermissionThenStart() =
-        if AndroidX.Core.Content.ContextCompat.CheckSelfPermission(this,
-            Android.Manifest.Permission.ActivityRecognition) = Permission.Denied then
-            //ask for permission
-            this.RequestPermissions([|Android.Manifest.Permission.ActivityRecognition|], activityRecognitionRequestCode)
-        else
-            Xamarin.Forms.DependencyService.Register<PedometerAndroid>()
-            this.LoadApplication(App())
-            Plugin.LocalNotification.NotificationCenter.NotifyNotificationTapped this.Intent |> ignore
+    member this.StartApp() =
+        Xamarin.Forms.DependencyService.Register<PedometerAndroid>()
+        this.LoadApplication(App())
+        Plugin.LocalNotification.NotificationCenter.NotifyNotificationTapped this.Intent |> ignore
     override this.OnNewIntent intent =
         Plugin.LocalNotification.NotificationCenter.NotifyNotificationTapped this.Intent |> ignore
         base.OnNewIntent intent
@@ -62,8 +57,13 @@ type MainActivity() =
         Xamarin.Essentials.Platform.Init(this, bundle)
         App.PlatformSpecifics.PlatformServices.init(this, bundle)
         Plugin.LocalNotification.NotificationCenter.CreateNotificationChannel() |> ignore
-        this.RequestPedometerPermissionThenStart()
+        if AndroidX.Core.Content.ContextCompat.CheckSelfPermission(this,
+            Android.Manifest.Permission.ActivityRecognition) = Permission.Denied then
+            //ask for permission
+            this.RequestPermissions([|Android.Manifest.Permission.ActivityRecognition|], activityRecognitionRequestCode)
+        this.StartApp()
     override this.OnRequestPermissionsResult(requestCode: int, permissions: string[], [<GeneratedEnum>] grantResults: Permission[]) =
         Xamarin.Essentials.Platform.OnRequestPermissionsResult(requestCode, permissions, grantResults)
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults)
-        if requestCode = activityRecognitionRequestCode then this.RequestPedometerPermissionThenStart()
+        if requestCode = activityRecognitionRequestCode then
+            this.StartApp()
