@@ -168,7 +168,7 @@ module App =
             match model.Page with
             | Main | Menu ->
                 views.background_rect 0xffffff
-                views.background_roundRectFromTop 0xA9A290 119R 20R
+                views.background_roundRectFromTop 0x9abfb9 119R 20R
                 views.drawingConstrained 20R 70R 40R 20R [
                     Draw.roundRect 0xF2EFE5 3R 26R 76R 19.5<R> 0R 3R
                     Draw.roundRect 0xF2EFE5 3R 26R 84R 19.5<R> 0R 3R
@@ -180,7 +180,7 @@ module App =
                 views.button "Reset" 13R 0xffffff 0x645B43 ButtonStyle.Round 144R 499R 72R 21R Reset
                 if model.Page = Menu then
                     views.background_escape CloseMenu
-                    views.background_vRect 0xA9A290 0R 197R
+                    views.background_vRect 0x90a996 0R 197R
                     views.drawingConstrained 145R 70R 40R 20R [
                         Draw.roundRect 0xF2EFE5 3R 152R 76R 19.5<R> 0R 3R
                         Draw.roundRect 0xF2EFE5 3R 152R 84R 19.5<R> 0R 3R
@@ -189,10 +189,10 @@ module App =
                     views.background_button "Alarm" 16R 0xF2EFE5 0xB8B2A2 ButtonStyle.Rectangular 0R 119R 197R 53R OpenAlarm
             | Alarm ->
                 views.background_rect 0xffffff
-                views.text "Alarm" 94R 0x645B43 147R (68R+24R) // TODO: Font size should be 24R (Hint: hover over "text" to see which one is the font size)
-                views.background_roundRectFromBottom 0xA9A290 525R 20R
-                views.text "Notification" 24R 0xF2EFE5 55R (160R+24R) // TODO: Make the noun plural (i.e. add "s")
-                views.text "Remain you to have a walk" 14R 0xF2EFE5 55R (189R+17R) // TODO: Typo
+                views.text "Alarm" 24R 0x645B43 147R (68R+24R) // TODO: Font size should be 24R (Hint: hover over "text" to see which one is the font size)
+                views.background_roundRectFromBottom 0x90a2a9 525R 20R
+                views.text "Notifications" 24R 0xF2EFE5 55R (160R+24R) // TODO: Make the noun plural (i.e. add "s")
+                views.text "Remind you to have a walk" 14R 0xF2EFE5 55R (189R+17R) // TODO: Typo
                 views.drawingConstrained 0R 0R 315R 195R [
                     Draw.group 25R 72R [Draw.path 0x645B43 3R "M19.5 2L3 14L19.5 27"]
                     Draw.roundRect (if model.Alarm.Enabled then 0xA4E3C5 else 0xF2EFE5) Draw.thicknessFill 265R 162R 46R 26R 15R
@@ -201,8 +201,8 @@ module App =
                         (if model.Alarm.Enabled then 287R else 267R)
                          164R 22R 22R 11R
                 ]
-                views.buttonInvisible 0R 50R 75R 75R OpenMenu // TODO: Should be CloseMenu instead
-                views.buttonInvisible 250R 150R 75R 0R SwitchAlarm // TODO: Set the height to 50R
+                views.buttonInvisible 0R 50R 75R 75R CloseMenu // TODO: Should be CloseMenu instead
+                views.buttonInvisible 250R 150R 75R 50R SwitchAlarm // TODO: Set the height to 50R
                 if model.Alarm.Enabled then
                     views.background_hRect (rgba(255, 255, 255, 0.2)) 280R 107R
                     views.textCenter "Repeat every" 17R 0xF2EFE5 (291R+17R)
@@ -210,9 +210,11 @@ module App =
                         views.button text 20R (if on then 0xF2EFE5 else 0x848484)
                             (if on then 0x645B43 else 0xF5F3EA) ButtonStyle.Round left 330R 33R 33R message
                     daySwitch "M" 28R model.Alarm.Monday SwitchMonday
+                    daySwitch "T" 73R model.Alarm.Tuesday SwitchTuesday
                     // TODO: Tuesday button with left X coordinate 73R. Hint: Ctrl+D to duplicate an entire line
                     daySwitch "W" 118R model.Alarm.Wednesday SwitchWednesday
                     daySwitch "T" 163R model.Alarm.Thursday SwitchThursday
+                    daySwitch "F" 208R model.Alarm.Friday SwitchFriday
                     // TODO: Friday button with left X coordinate 208R
                     daySwitch "S" 253R model.Alarm.Saturday SwitchSaturday
                     daySwitch "S" 298R model.Alarm.Sunday SwitchSunday
@@ -224,7 +226,7 @@ module App =
                     views.touchArea false 55R 470R 275R 50R (fun x _ e ->
                         match e with
                         | Action.Moved ->
-                            x - 22R/2. |> min 384R |> max 64R |> MoveKnob |> dispatch // TODO: right limit should be at 284R instead
+                            x - 22R/2. |> min 284R |> max 64R |> MoveKnob |> dispatch // TODO: right limit should be at 284R instead
                         | Action.Released ->
                             dispatch ReleaseKnob
                         | _ -> ()
