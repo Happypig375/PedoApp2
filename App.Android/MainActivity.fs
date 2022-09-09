@@ -35,7 +35,9 @@ type PedometerAndroid() =
         member _.IsSupported = sensor <> null
         member _.Step = event.Publish
 
-[<UsesFeature(Name = Android.Hardware.Sensor.StringTypeStepCounter, Required = true)>]
+// Not Android.Hardware.Sensor.StringTypeStepCounter!
+// Available features: https://developer.android.com/guide/topics/manifest/uses-feature-element#features-reference
+[<UsesFeature(Name = "android.hardware.sensor.stepcounter", Required = true)>]
 [<UsesPermission(Android.Manifest.Permission.ActivityRecognition)>]
 do ()
 
